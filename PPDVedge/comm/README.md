@@ -9,4 +9,4 @@
 - 断网缓存与重连补传
 
 ## 约定
-MQTT Topic 与消息格式（遥测/指令）需与云端统一约定，见 `docs/protocol.md`（待建）。
+MQTT Topic 与消息格式（遥测/指令）见 [../../docs/protocol.md](../../docs/protocol.md)（草案 v0.1）。

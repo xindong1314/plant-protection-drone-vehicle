@@ -112,4 +112,4 @@ PlantProtectionDroneVehicle/
 
 1. **优先级**：车载端（尤其定位导航 + 安全防护）决定成败，建议尽早立项；Web 系统先跑通"设备管理 + 实时监控 + 任务下发"主线。
 2. **技术栈**：已确定 —— 后端 Spring Boot、前端 Vue、车载端 ROS2（见上方「技术栈」节）。
-3. **接口约定**：车载端与云端的 MQTT Topic、消息格式（遥测/指令）需尽早约定，单独成文（`docs/protocol.md`）。
+3. **接口约定**：车载端与云端的 MQTT Topic、消息格式（遥测/指令）见 [protocol.md](protocol.md)（草案 v0.1，待评审冻结）。
