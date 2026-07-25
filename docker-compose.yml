@@ -1,0 +1,96 @@
+# PPDV 云平台本地中间件编排
+# 用法：docker compose up -d
+#   MySQL   3306   业务库 + 若依 RBAC（Flyway 建表）
+#   TDengine 6041  遥测时序库（REST/taosAdapter，Windows 免原生客户端）
+#   EMQX    1883 / 18083  车云 MQTT broker + Dashboard（一机一密 HTTP 认证）
+#   Redis   6379   登录令牌 / 验证码 / 在线用户
+# 后端默认跑在宿主机 8080；EMQX 经 host.docker.internal 回调后端做设备认证。
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: ppdv-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: ppdv
+      MYSQL_USER: ppdv
+      MYSQL_PASSWORD: ppdv123
+      TZ: Asia/Shanghai
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+08:00
+    ports:
+      - "13306:3306"  # 宿主机已有本地 MySQL 占用 3306；3307 段被 Windows 保留，故用 13306
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot123"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  tdengine:
+    image: tdengine/tdengine:3.3.2.0
+    container_name: ppdv-tdengine
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+    ports:
+      - "6030:6030"   # 原生
+      - "6041:6041"   # REST / taosAdapter
+    volumes:
+      - tdengine_data:/var/lib/taos
+      - tdengine_log:/var/log/taos
+    healthcheck:
+      test: ["CMD", "taos", "-s", "show databases;"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  emqx:
+    image: emqx/emqx:5.8.0
+    container_name: ppdv-emqx
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      # 引导 API Key，供 bootstrap 脚本用 REST API 配置 HTTP 认证/授权
+      EMQX_API_KEY__BOOTSTRAP_FILE: "/opt/emqx/etc/api_keys.txt"
+    ports:
+      - "1883:1883"    # MQTT
+      - "8083:8083"    # MQTT over WebSocket
+      - "8883:8883"    # MQTT over TLS
+      - "18083:18083"  # Dashboard / REST API
+    volumes:
+      - emqx_data:/opt/emqx/data
+      - ./docker/emqx/api_keys.txt:/opt/emqx/etc/api_keys.txt:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "emqx", "ctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: ppdv-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  mysql_data:
+  tdengine_data:
+  tdengine_log:
+  emqx_data:
+  redis_data:

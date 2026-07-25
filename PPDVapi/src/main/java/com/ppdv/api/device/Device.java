@@ -38,6 +38,9 @@ public class Device {
 
     private String firmware;
 
+    /** 设备密钥（一机一密，作为 MQTT 接入口令） */
+    private String secret;
+
     // 最近遥测快照
     private Instant lastSeenAt;
     private Double lastLat;

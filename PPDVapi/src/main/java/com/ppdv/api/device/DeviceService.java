@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class DeviceService {
@@ -36,7 +37,36 @@ public class DeviceService {
         d.setDeviceId(req.deviceId());
         d.setName(req.name());
         d.setModel(req.model());
+        d.setSecret(generateSecret());
         return repository.save(d);
+    }
+
+    @Transactional
+    public void deleteByIds(Long[] ids) {
+        for (Long id : ids) {
+            repository.deleteById(id);
+        }
+    }
+
+    /** 重置设备密钥（一机一密轮换）。 */
+    @Transactional
+    public String resetSecret(String deviceId) {
+        Device d = get(deviceId);
+        String secret = generateSecret();
+        d.setSecret(secret);
+        repository.save(d);
+        return secret;
+    }
+
+    /** EMQX 认证回调用：校验 deviceId + secret。 */
+    @Transactional(readOnly = true)
+    public boolean authenticate(String deviceId, String secret) {
+        return deviceId != null && secret != null
+                && repository.existsByDeviceIdAndSecret(deviceId, secret);
+    }
+
+    private String generateSecret() {
+        return UUID.randomUUID().toString().replace("-", "");
     }
 
     /** 遥测入库：设备不存在时自动登记（IoT 常见做法）。 */
