@@ -1,0 +1,45 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  width: 100%;
+  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+}
+
+/* 大屏深色主题基调 */
+.screen-bg {
+  background: radial-gradient(1200px 600px at 50% -10%, #0b2b4a 0%, #061529 60%, #030b16 100%);
+  color: #d6e6ff;
+}
+
+.panel {
+  background: rgba(16, 42, 74, 0.55);
+  border: 1px solid rgba(64, 158, 255, 0.25);
+  border-radius: 8px;
+  backdrop-filter: blur(2px);
+}
+
+.panel-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #7ec5ff;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(64, 158, 255, 0.2);
+}
+
+.kpi-value {
+  font-size: 30px;
+  font-weight: 700;
+  color: #46e0c0;
+}
+
+.kpi-label {
+  font-size: 13px;
+  color: #9db8dd;
+}

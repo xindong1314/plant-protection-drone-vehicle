@@ -51,12 +51,17 @@ public class TokenService {
 
     /** 从请求解析并获取登录用户（不存在或已失效返回 null）。 */
     public LoginUser getLoginUser(HttpServletRequest request) {
-        String token = getToken(request);
+        return getLoginUserByToken(getToken(request));
+    }
+
+    /** 直接用 JWT 字符串获取登录用户（WebSocket 握手用，令牌走 query 参数）。 */
+    public LoginUser getLoginUserByToken(String token) {
         if (!StringUtils.hasText(token)) {
             return null;
         }
+        String jwt = token.startsWith(Constants.TOKEN_PREFIX) ? token.substring(Constants.TOKEN_PREFIX.length()) : token;
         try {
-            Claims claims = parseToken(token);
+            Claims claims = parseToken(jwt);
             String uuid = (String) claims.get(Constants.LOGIN_USER_KEY);
             return redisCache.get(tokenKey(uuid));
         } catch (Exception e) {

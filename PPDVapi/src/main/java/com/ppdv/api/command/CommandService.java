@@ -1,5 +1,6 @@
 package com.ppdv.api.command;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.ppdv.api.device.DeviceService;
@@ -46,6 +47,24 @@ public class CommandService {
             return envelope.getMsgId();
         } catch (Exception e) {
             throw new IllegalStateException("指令序列化失败: " + e.getMessage(), e);
+        }
+    }
+
+    /** 下发作业任务（航线/地块/参数），返回本次 msgId。发布到 task/assign。 */
+    public String sendTask(String deviceId, Map<String, Object> taskData) {
+        deviceService.get(deviceId);
+        MqttPublisher publisher = publisherProvider.getIfAvailable();
+        if (publisher == null) {
+            throw new IllegalStateException("MQTT 未启用 (ppdv.mqtt.enabled=false)，无法下发任务");
+        }
+        JsonNode data = objectMapper.valueToTree(taskData == null ? Map.of() : taskData);
+        Envelope envelope = Envelope.of(deviceId, "task", data);
+        try {
+            String payload = objectMapper.writeValueAsString(envelope);
+            publisher.publish(Topics.taskAssign(deviceId), payload);
+            return envelope.getMsgId();
+        } catch (Exception e) {
+            throw new IllegalStateException("任务序列化失败: " + e.getMessage(), e);
         }
     }
 }

@@ -4,6 +4,47 @@
 
 ---
 
+## 2026-07-26 · PPDVweb 业务前端（大屏/驾驶舱/作业规划 + 实时 WebSocket）
+
+在既有平台上新增业务前端 `PPDVweb`，并为后端补齐实时推送与任务下发。
+
+### 关键决策
+
+- **PPDVweb 独立于 PPDVadmin**：业务前端是可视化大屏/地图，不套若依，采用轻量 Vue3 + Vite + Pinia + Element Plus + ECharts + 高德 AMap；复用 PPDVapi 的 JWT 与业务接口，不重写后端。
+- **实时用 WebSocket**：后端 `/ws/telemetry`（握手 `?token=JWT`，在 handler 内校验），遥测经 MQTT 到达即广播到大屏。
+
+### 后端新增（PPDVapi）
+
+- `spring-boot-starter-websocket`；`WebSocketConfig` + `TelemetryWebSocketHandler`（token 认证、会话集合、广播、自动清理）。
+- `TelemetryIngestService` 在入库同时广播 `{deviceId,kind,ts,data}`（status/state/work/alarm/progress）。
+- 任务下发：`CommandService.sendTask` + `TaskController` `POST /ppdv/device/{id}/task` → 发布 `task/assign`。
+- `TokenService.getLoginUserByToken`（供 WS 用）；SecurityConfig 放行 `/ws/**`。
+
+### 前端（PPDVweb）
+
+- 工程骨架：登录（JWT）、布局导航、axios 拦截器、Pinia、路由守卫、vite 代理（`/dev-api`→8080，`/ws` WebSocket 代理），dev 端口 8082。
+- **监控大屏**：KPI（总数/在线/作业中/告警）+ 高德地图全车位置 + 状态分布饼图 + 设备列表 + 实时告警流，WebSocket 驱动。
+- **驾驶舱**：选车 + 实时状态仪表（ECharts 电量表）+ 历史轨迹地图 + 控制指令按钮。
+- **作业规划**：高德 MouseTool 圈地块/画航线 → 组装任务 `POST /ppdv/device/{id}/task` 下发。
+- 高德 Key 经 `.env` 的 `VITE_AMAP_KEY` 注入；未配置时地图降级为占位提示，其余功能正常。
+
+### 联调验证（均通过）
+
+| 项 | 结果 |
+|----|------|
+| 后端 build | 100 源文件编译通过 |
+| 任务下发 `POST .../task` | 返回 msgId，发布到 task/assign |
+| PPDVweb build | 2227 模块，全部页面编译通过 |
+| dev 代理 | `/dev-api/login`、设备列表经 8082 代理返回 `code:200` |
+| WebSocket 实时 | Node WS 客户端连上后，mosquitto 发一条 tele/state → 客户端即时收到广播 `WS_RECV{...}` |
+
+### 遗留
+
+- 高德地图需用户自备 Web 端 JS API Key（`VITE_AMAP_KEY`），未配置仅地图区域占位。
+- 驾驶舱视频流、告警声光、作业报表导出等未做；作业规划的航线目前内联下发（未走 OSS routeUrl）。
+
+---
+
 ## 2026-07-26 · 云平台全栈集成（若依 RBAC + MySQL/TDengine/EMQX/Redis）
 
 提交：`0ca438d`（feat: 云平台全栈集成）。此前为 `e98215e`（Spring Boot 初始工程：设备管理 + MQTT 车云接入）。

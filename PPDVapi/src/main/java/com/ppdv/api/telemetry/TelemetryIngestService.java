@@ -2,12 +2,15 @@ package com.ppdv.api.telemetry;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.ppdv.api.device.DeviceService;
 import com.ppdv.api.protocol.Topics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
+
+import java.util.Set;
 
 /**
  * 上行遥测入库：解析主题与信封，更新设备快照（MySQL）并写入时序库（TDengine，若启用）。
@@ -18,15 +21,20 @@ public class TelemetryIngestService {
 
     private static final Logger log = LoggerFactory.getLogger(TelemetryIngestService.class);
 
+    private static final Set<String> LIVE_KINDS = Set.of("status", "tele/state", "tele/work", "event/alarm", "task/progress");
+
     private final DeviceService deviceService;
     private final ObjectMapper objectMapper;
     private final ObjectProvider<TelemetryTsService> tsServiceProvider;
+    private final ObjectProvider<TelemetryWebSocketHandler> wsHandlerProvider;
 
     public TelemetryIngestService(DeviceService deviceService, ObjectMapper objectMapper,
-                                  ObjectProvider<TelemetryTsService> tsServiceProvider) {
+                                  ObjectProvider<TelemetryTsService> tsServiceProvider,
+                                  ObjectProvider<TelemetryWebSocketHandler> wsHandlerProvider) {
         this.deviceService = deviceService;
         this.objectMapper = objectMapper;
         this.tsServiceProvider = tsServiceProvider;
+        this.wsHandlerProvider = wsHandlerProvider;
     }
 
     public void onMessage(String topic, String payload) {
@@ -48,8 +56,29 @@ public class TelemetryIngestService {
                 case "event/alarm" -> handleAlarm(deviceId, data);
                 default -> log.debug("未处理的主题种类 {}: {}", kind, topic);
             }
+            if (LIVE_KINDS.contains(kind)) {
+                broadcast(deviceId, kind, ts, data);
+            }
         } catch (Exception e) {
             log.warn("解析上行消息失败, topic={}, err={}", topic, e.getMessage());
+        }
+    }
+
+    /** 推送实时事件到大屏（WebSocket）。 */
+    private void broadcast(String deviceId, String kind, long ts, JsonNode data) {
+        TelemetryWebSocketHandler ws = wsHandlerProvider.getIfAvailable();
+        if (ws == null) {
+            return;
+        }
+        try {
+            ObjectNode ev = objectMapper.createObjectNode();
+            ev.put("deviceId", deviceId);
+            ev.put("kind", kind);
+            ev.put("ts", ts);
+            ev.set("data", data);
+            ws.broadcast(objectMapper.writeValueAsString(ev));
+        } catch (Exception e) {
+            log.debug("广播遥测失败: {}", e.getMessage());
         }
     }
 

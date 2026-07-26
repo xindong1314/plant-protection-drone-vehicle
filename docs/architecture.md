@@ -122,7 +122,7 @@ PlantProtectionDroneVehicle/
 |----|------|------|
 | 云平台后端 | `PPDVapi/` | Spring Boot 3.2 + Spring Security/JWT + 若依式 RBAC；MySQL(Flyway) + Redis + TDengine(遥测) + EMQX(车云 MQTT，一机一密) |
 | 管理后台前端 | `PPDVadmin/` | 若依 RuoYi-Vue3，对接后端契约；新增「设备管理 / 实时监控」业务页 |
-| 业务前端 | `PPDVweb/` | 待建（监控大屏/作业规划） |
+| 业务前端 | `PPDVweb/` | Vue3+Vite+ECharts+高德 AMap；监控大屏 / 驾驶舱 / 作业规划，经 WebSocket 实时 |
 | 车载端 | `PPDVedge/` | 目录骨架，待实现 |
 
 - 后端接口统一为若依契约（`code:200` + AjaxResult/TableDataInfo），动态路由/菜单权限打通。
