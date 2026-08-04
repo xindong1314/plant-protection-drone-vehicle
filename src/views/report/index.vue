@@ -6,18 +6,20 @@
         v-model="filter.startTime"
         type="datetime"
         placeholder="开始时间"
-        format="yyyy-MM-dd HH:mm:ss"
-        value-format="yyyy-MM-dd HH:mm:ss"
-        style="width: 200px"
+        format="YYYY-MM-DD HH:mm:ss"
+        value-format="YYYY-MM-DD HH:mm:ss"
+        style="width: 220px"
+        :clearable="false"
       />
       <span class="filter-sep">—</span>
       <el-date-picker
         v-model="filter.endTime"
         type="datetime"
         placeholder="结束时间"
-        format="yyyy-MM-dd HH:mm:ss"
-        value-format="yyyy-MM-dd HH:mm:ss"
-        style="width: 200px"
+        format="YYYY-MM-DD HH:mm:ss"
+        value-format="YYYY-MM-DD HH:mm:ss"
+        style="width: 220px"
+        :clearable="false"
       />
       <el-button type="primary" :icon="Search" @click="handleQuery">查询</el-button>
       <el-button :icon="Refresh" @click="handleReset">重置</el-button>
@@ -151,8 +153,8 @@ import { getReport } from '@/api/ppdv/report'
 
 const loading = ref(false)
 const filter = reactive({
-  startTime: '',
-  endTime: ''
+  startTime: null,
+  endTime: null
 })
 const report = ref<any>(null)
 const pieChartRef = ref<HTMLDivElement>()
@@ -196,7 +198,10 @@ function renderPieChart() {
       radius: ['40%', '70%'],
       center: ['50%', '45%'],
       data: pieData,
-      label: { formatter: '{b}: {c}' }
+      label: { formatter: '{b}: {c}' },
+      emphasis: {
+        scaleSize: 10
+      }
     }]
   })
 }
@@ -208,8 +213,8 @@ function handleQuery() {
 }
 
 function handleReset() {
-  filter.startTime = ''
-  filter.endTime = ''
+  filter.startTime = null
+  filter.endTime = null
   fetchReport()
 }
 
