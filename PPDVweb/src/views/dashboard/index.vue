@@ -1,283 +1,237 @@
 <template>
-  <div class="dashboard">
-    <!-- KPI 行 -->
-    <div class="kpi-row">
-      <div class="panel kpi">
-        <div class="kpi-value">{{ devices.length }}</div>
-        <div class="kpi-label">设备总数</div>
-      </div>
-      <div class="panel kpi">
-        <div class="kpi-value" style="color:#46e0c0">{{ onlineCount }}</div>
-        <div class="kpi-label">在线设备</div>
-      </div>
-      <div class="panel kpi">
-        <div class="kpi-value" style="color:#ffd166">{{ workingCount }}</div>
-        <div class="kpi-label">作业中(AUTO)</div>
-      </div>
-      <div class="panel kpi">
-        <div class="kpi-value" style="color:#ff6b6b">{{ alarms.length }}</div>
-        <div class="kpi-label">告警数</div>
-      </div>
-    </div>
+  <div class="dashboard-page">
+    <!-- 1. 统计卡片行 -->
+    <el-row :gutter="16" class="stat-row">
+      <el-col :span="6">
+        <el-card shadow="hover">
+          <div class="stat-num online">{{ store.onlineCount }}</div>
+          <div class="stat-sub">/ {{ store.totalCount }} 总数</div>
+          <div class="stat-label">在线设备</div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card shadow="hover" :class="{ 'alarm-card': store.alarmCount > 0 }">
+          <div class="stat-num" :class="{ danger: store.alarmCount > 0 }">{{ store.alarmCount }}</div>
+          <div class="stat-label">活跃告警</div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card shadow="hover">
+          <div class="stat-num spraying">{{ store.sprayingCount }}</div>
+          <div class="stat-label">正在作业</div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card shadow="hover">
+          <div class="stat-num">{{ todayInspections }}</div>
+          <div class="stat-label">今日巡检</div>
+        </el-card>
+      </el-col>
+    </el-row>
 
-    <div class="main">
-      <!-- 地图 -->
-      <div class="panel map-panel">
-        <div class="panel-title">车辆分布</div>
-        <div ref="mapEl" class="map"></div>
-        <div v-if="mapError" class="map-mask">{{ mapError }}</div>
-      </div>
+    <!-- 2. 图表行 -->
+    <el-row :gutter="16" class="chart-row">
+      <el-col :span="12">
+        <el-card shadow="hover">
+          <div class="card-title">设备状态分布</div>
+          <div ref="statusPieRef" class="chart-container"></div>
+        </el-card>
+      </el-col>
+      <el-col :span="12">
+        <el-card shadow="hover">
+          <div class="card-title">设备电量</div>
+          <div v-if="store.totalCount > 0" ref="batteryBarRef" class="chart-container"></div>
+          <div v-else class="chart-empty">暂无设备数据</div>
+        </el-card>
+      </el-col>
+    </el-row>
 
-      <!-- 右侧 -->
-      <div class="side">
-        <div class="panel side-block">
-          <div class="panel-title">状态分布</div>
-          <div ref="chartEl" class="chart"></div>
-        </div>
-        <div class="panel side-block">
-          <div class="panel-title">设备列表</div>
-          <div class="dev-list">
-            <div v-for="d in devices" :key="d.deviceId" class="dev-item">
-              <span class="dot" :class="d.status === 'ONLINE' ? 'on' : 'off'"></span>
-              <span class="dev-id">{{ d.deviceId }}</span>
-              <span class="dev-name">{{ d.name }}</span>
-              <span class="dev-batt">{{ d.battery != null ? d.battery + '%' : '-' }}</span>
-              <span class="dev-mode">{{ d.mode || '-' }}</span>
+    <!-- 3. 底行：事件流 + 告警列表 -->
+    <el-row :gutter="16" class="bottom-row">
+      <el-col :span="12">
+        <el-card shadow="hover">
+          <div class="card-title">实时事件</div>
+          <div class="event-list">
+            <div v-if="store.recentEvents.length === 0" class="event-empty">等待遥测数据...</div>
+            <div v-for="(ev, i) in store.recentEvents" :key="i" class="event-item">
+              <span class="event-time">{{ formatEventTime(ev.ts) }}</span>
+              <span class="event-device">{{ ev.deviceId }}</span>
+              <span class="event-summary">{{ ev.summary }}</span>
             </div>
           </div>
-        </div>
-        <div class="panel side-block">
-          <div class="panel-title">实时告警</div>
-          <div class="alarm-list">
-            <div v-if="!alarms.length" class="empty">暂无告警</div>
-            <div v-for="(a, i) in alarms" :key="i" class="alarm-item">
-              <span class="lv" :class="a.level">{{ a.level || 'INFO' }}</span>
-              <span>{{ a.deviceId }}</span>
-              <span class="msg">{{ a.msg }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+        </el-card>
+      </el-col>
+      <el-col :span="12">
+        <el-card shadow="hover">
+          <div class="card-title">活跃告警</div>
+          <el-table v-if="store.recentAlarms.length > 0" :data="store.recentAlarms" style="width: 100%" max-height="280">
+            <el-table-column label="时间" width="100">
+              <template #default="{ row }">{{ formatEventTime(row.ts) }}</template>
+            </el-table-column>
+            <el-table-column label="级别" width="80">
+              <template #default="{ row }">
+                <el-tag :type="alarmLevelTag(row.level)" size="small">{{ row.level }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="deviceId" label="设备" width="110" />
+            <el-table-column prop="msg" label="内容" show-overflow-tooltip />
+          </el-table>
+          <el-empty v-else description="暂无告警" :image-size="80" />
+        </el-card>
+      </el-col>
+    </el-row>
   </div>
 </template>
 
-<script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+<script lang="ts" setup>
+import { ref, onMounted, onUnmounted } from 'vue'
 import * as echarts from 'echarts'
-import { listDevice } from '@/api/device'
-import { loadAMap } from '@/utils/amap'
-import { connectTelemetry } from '@/utils/ws'
+import { useTelemetryStore } from '@/stores/telemetry'
+import { listDevice } from '@/api/ppdv/device'
+import { getReport } from '@/api/ppdv/report'
+import { getToken } from '@/utils/auth'
 
-const devices = ref([])
-const alarms = ref([])
-const mapEl = ref()
-const chartEl = ref()
-const mapError = ref('')
+const store = useTelemetryStore()
+const todayInspections = ref(0)
 
-let AMapRef = null
-let map = null
-const markers = {}
-let chart = null
-let wsConn = null
+// ---------- 图表 ----------
+const statusPieRef = ref<HTMLDivElement>()
+const batteryBarRef = ref<HTMLDivElement>()
+let statusPieChart: echarts.ECharts | null = null
+let batteryBarChart: echarts.ECharts | null = null
 
-const onlineCount = computed(() => devices.value.filter((d) => d.status === 'ONLINE').length)
-const workingCount = computed(() => devices.value.filter((d) => d.mode === 'AUTO').length)
-
-async function loadDevices() {
-  const res = await listDevice({ pageNum: 1, pageSize: 200 })
-  devices.value = res.rows || []
-  renderMarkers()
-  renderChart()
-}
-
-function renderMarkers() {
-  if (!map || !AMapRef) return
-  devices.value.forEach((d) => {
-    if (d.lastLat == null || d.lastLon == null) return
-    const pos = [d.lastLon, d.lastLat]
-    if (markers[d.deviceId]) {
-      markers[d.deviceId].setPosition(pos)
-    } else {
-      markers[d.deviceId] = new AMapRef.Marker({
-        position: pos,
-        title: d.deviceId + ' ' + (d.name || ''),
-        map
-      })
-    }
-  })
-}
-
-function renderChart() {
-  if (!chart) return
-  const online = onlineCount.value
-  const offline = devices.value.length - online
-  chart.setOption({
+function renderStatusPie() {
+  if (!statusPieRef.value) return
+  if (!statusPieChart) statusPieChart = echarts.init(statusPieRef.value)
+  const offline = store.totalCount - store.onlineCount
+  statusPieChart.setOption({
     tooltip: { trigger: 'item' },
-    legend: { bottom: 0, textStyle: { color: '#9db8dd' } },
-    series: [
-      {
-        type: 'pie',
-        radius: ['45%', '70%'],
-        label: { color: '#d6e6ff' },
-        data: [
-          { value: online, name: '在线', itemStyle: { color: '#46e0c0' } },
-          { value: offline, name: '离线', itemStyle: { color: '#5a6b85' } }
-        ]
-      }
-    ]
+    series: [{
+      type: 'pie',
+      radius: ['50%', '70%'],
+      center: ['50%', '50%'],
+      label: { show: false },
+      emphasis: { scaleSize: 8 },
+      data: [
+        { value: store.onlineCount, name: '在线', itemStyle: { color: '#67C23A' } },
+        { value: Math.max(offline, 0), name: '离线', itemStyle: { color: '#C0C4CC' } },
+      ]
+    }]
   })
 }
 
-function onEvent(ev) {
-  const d = devices.value.find((x) => x.deviceId === ev.deviceId)
-  if (ev.kind === 'tele/state' && d) {
-    if (ev.data.lat != null) d.lastLat = ev.data.lat
-    if (ev.data.lon != null) d.lastLon = ev.data.lon
-    if (ev.data.battery != null) d.battery = ev.data.battery
-    if (ev.data.mode) d.mode = ev.data.mode
-    d.status = 'ONLINE'
-    renderMarkers()
-  } else if (ev.kind === 'status' && d) {
-    d.status = ev.data.online ? 'ONLINE' : 'OFFLINE'
-    renderChart()
-  } else if (ev.kind === 'event/alarm') {
-    alarms.value.unshift({ deviceId: ev.deviceId, ...ev.data })
-    if (alarms.value.length > 50) alarms.value.pop()
+function renderBatteryBar() {
+  if (!batteryBarRef.value || store.totalCount === 0) return
+  if (!batteryBarChart) batteryBarChart = echarts.init(batteryBarRef.value)
+  const list = store.deviceList
+  batteryBarChart.setOption({
+    tooltip: { trigger: 'axis', formatter: '{b}: {c}%' },
+    grid: { left: 40, right: 20, top: 10, bottom: 30 },
+    xAxis: { type: 'category', data: list.map(d => d.deviceId || '?') },
+    yAxis: { type: 'value', min: 0, max: 100, axisLabel: { formatter: '{value}%' } },
+    series: [{
+      type: 'bar',
+      data: list.map(d => {
+        const v = d.battery ?? 0
+        let color = '#F56C6C'
+        if (v >= 60) color = '#67C23A'
+        else if (v >= 20) color = '#E6A23C'
+        return { value: v, itemStyle: { color } }
+      }),
+    }]
+  })
+}
+
+function renderAllCharts() {
+  renderStatusPie()
+  renderBatteryBar()
+}
+
+// ---------- 格式化 ----------
+function pad(n: number): string { return String(n).padStart(2, '0') }
+function formatEventTime(ts: number): string {
+  const d = new Date(ts)
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+}
+function alarmLevelTag(level: string): string {
+  const map: Record<string, string> = { CRITICAL: 'danger', WARN: 'warning', INFO: '' }
+  return map[level] || 'info'
+}
+
+// ---------- 初始化 ----------
+async function init() {
+  try {
+    // 1. 拉设备列表
+    const deviceRes: any = await listDevice()
+    store.initDevices(deviceRes.rows || [])
+
+    // 2. 今日报表
+    const today = new Date()
+    const startStr = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())} 00:00:00`
+    const reportRes: any = await getReport(startStr)
+    todayInspections.value = reportRes.data?.inspections?.total ?? reportRes.inspections?.total ?? 0
+
+    // 3. 渲染图表
+    renderAllCharts()
+  } catch {
+    // 静默
+  }
+
+  // 4. WebSocket
+  const token = getToken()
+  if (token) {
+    store.connect(token)
   }
 }
 
-onMounted(async () => {
-  await loadDevices()
-  chart = echarts.init(chartEl.value)
-  renderChart()
-  try {
-    AMapRef = await loadAMap()
-    map = new AMapRef.Map(mapEl.value, { zoom: 12, center: [120.65, 30.12], mapStyle: 'amap://styles/darkblue' })
-    renderMarkers()
-  } catch (e) {
-    mapError.value = e.message + '（填好 Key 后地图即显示，其余功能不受影响）'
-  }
-  wsConn = connectTelemetry(onEvent)
+// ---------- 30 秒刷新图表 ----------
+let chartTimer: ReturnType<typeof setInterval> | null = null
+
+onMounted(() => {
+  init()
+  chartTimer = setInterval(renderAllCharts, 30000)
 })
 
-onBeforeUnmount(() => {
-  if (wsConn) wsConn.close()
-  if (chart) chart.dispose()
-  if (map) map.destroy()
+onUnmounted(() => {
+  store.disconnect()
+  if (chartTimer) {
+    clearInterval(chartTimer)
+  }
+  statusPieChart?.dispose()
+  batteryBarChart?.dispose()
 })
 </script>
 
 <style scoped>
-.dashboard {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.dashboard-page { padding: 0; }
+.stat-row { margin-bottom: 16px; }
+.stat-num {
+  font-size: 36px; font-weight: bold; color: #303133; text-align: center;
 }
-.kpi-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
+.stat-num.online { color: #67C23A; }
+.stat-num.spraying { color: #409EFF; }
+.stat-num.danger { color: #F56C6C; }
+.stat-sub {
+  font-size: 12px; color: #909399; text-align: center; margin-top: -2px;
 }
-.kpi {
-  padding: 14px 18px;
-  text-align: center;
+.stat-label {
+  font-size: 13px; color: #909399; text-align: center; margin-top: 6px;
 }
-.main {
-  flex: 1;
-  display: grid;
-  grid-template-columns: 1fr 360px;
-  gap: 12px;
-  min-height: 0;
+.alarm-card { border-left: 3px solid #F56C6C; }
+.card-title { font-size: 14px; color: #909399; margin-bottom: 12px; }
+.chart-row { margin-bottom: 16px; }
+.chart-container { width: 100%; height: 280px; }
+.chart-empty { text-align: center; color: #909399; padding: 80px 0; font-size: 14px; }
+.bottom-row { margin-bottom: 16px; }
+
+.event-list { max-height: 280px; overflow-y: auto; }
+.event-empty { text-align: center; color: #909399; padding: 60px 0; font-size: 14px; }
+.event-item {
+  display: flex; gap: 8px; padding: 6px 0; border-bottom: 1px solid #f0f0f0;
+  font-size: 13px; align-items: baseline;
 }
-.map-panel {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-}
-.map {
-  flex: 1;
-  border-radius: 0 0 8px 8px;
-}
-.map-mask {
-  position: absolute;
-  inset: 40px 0 0 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #9db8dd;
-  text-align: center;
-  padding: 20px;
-}
-.side {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-height: 0;
-}
-.side-block {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-.chart {
-  flex: 1;
-  min-height: 140px;
-}
-.dev-list,
-.alarm-list {
-  flex: 1;
-  overflow: auto;
-  padding: 6px 10px;
-  font-size: 13px;
-}
-.dev-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 0;
-  border-bottom: 1px dashed rgba(64, 158, 255, 0.15);
-}
-.dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-.dot.on {
-  background: #46e0c0;
-}
-.dot.off {
-  background: #5a6b85;
-}
-.dev-id {
-  width: 90px;
-}
-.dev-name {
-  flex: 1;
-  color: #9db8dd;
-}
-.alarm-item {
-  display: flex;
-  gap: 8px;
-  padding: 4px 0;
-}
-.alarm-item .lv {
-  font-weight: 700;
-}
-.lv.CRITICAL {
-  color: #ff6b6b;
-}
-.lv.WARN {
-  color: #ffd166;
-}
-.msg {
-  color: #9db8dd;
-}
-.empty {
-  color: #7f9bc4;
-  text-align: center;
-  padding: 20px;
-}
+.event-item:last-child { border-bottom: none; }
+.event-time { color: #C0C4CC; white-space: nowrap; font-family: monospace; }
+.event-device { color: #409EFF; font-family: monospace; white-space: nowrap; font-weight: 500; }
+.event-summary { color: #303133; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>

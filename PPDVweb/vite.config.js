@@ -1,33 +1,30 @@
+import { fileURLToPath, URL } from 'node:url'
+
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import path from 'path'
+import vueDevTools from 'vite-plugin-vue-devtools'
 
-const backend = 'http://127.0.0.1:8080'
-
+// https://vite.dev/config/
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [
+    vue(),
+    vueDevTools(),
+  ],
   resolve: {
-    alias: { '@': path.resolve(__dirname, './src') }
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
   },
+  // 开发服务器配置
   server: {
-    port: 8082,
+    port: 5173,
     host: true,
-    open: true,
     proxy: {
       '/dev-api': {
-        target: backend,
+        target: 'http://127.0.0.1:8080',  // 后端 PPDVapi 地址
         changeOrigin: true,
-        rewrite: (p) => p.replace(/^\/dev-api/, '')
-      },
-      '/ws': {
-        target: 'ws://127.0.0.1:8080',
-        ws: true,
-        changeOrigin: true
+        rewrite: (path) => path.replace(/^\/dev-api/, '')  // 剥掉 /dev-api 前缀
       }
     }
-  },
-  build: {
-    outDir: 'dist',
-    chunkSizeWarningLimit: 2000
   }
 })

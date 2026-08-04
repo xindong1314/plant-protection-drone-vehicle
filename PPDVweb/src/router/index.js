@@ -1,29 +1,41 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { getToken } from '@/utils/auth'
 
-const routes = [
-  { path: '/login', component: () => import('@/views/login/index.vue') },
-  {
-    path: '/',
-    component: () => import('@/layout/index.vue'),
-    redirect: '/dashboard',
-    children: [
-      { path: 'dashboard', name: 'dashboard', component: () => import('@/views/dashboard/index.vue'), meta: { title: '监控大屏' } },
-      { path: 'cockpit', name: 'cockpit', component: () => import('@/views/cockpit/index.vue'), meta: { title: '驾驶舱' } },
-      { path: 'planning', name: 'planning', component: () => import('@/views/planning/index.vue'), meta: { title: '作业规划' } }
-    ]
-  }
-]
-
 const router = createRouter({
-  history: createWebHistory(),
-  routes
+  history: createWebHistory(import.meta.env.BASE_URL),
+  routes: [
+    {
+      path: '/login',
+      component: () => import('@/views/login.vue'),
+    },
+    {
+      path: '/',
+      component: () => import('@/views/layout/index.vue'),
+      redirect: '/dashboard',
+      children: [
+        { path: 'dashboard', component: () => import('@/views/dashboard/index.vue') },
+        { path: 'map-plan',  component: () => import('@/views/map-plan/index.vue') },
+        { path: 'report',    component: () => import('@/views/report/index.vue') },
+        { path: 'device',    component: () => import('@/views/device/index.vue') },
+      ]
+    }
+  ],
 })
 
-router.beforeEach((to, from, next) => {
-  if (to.path === '/login') return next()
-  if (!getToken()) return next('/login')
-  next()
+router.beforeEach((to) => {
+  const token = getToken()
+  if (token) {
+    // 已登录：访问登录页 → 重定向到仪表盘
+    if (to.path === '/login') {
+      return '/dashboard'
+    }
+    return true
+  }
+  // 未登录：访问登录页 → 放行；其他页面 → 强制跳登录
+  if (to.path === '/login') {
+    return true
+  }
+  return '/login'
 })
 
 export default router
