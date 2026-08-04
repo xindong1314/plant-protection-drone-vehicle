@@ -23,6 +23,7 @@ DELETE FROM coer_review_record WHERE id BETWEEN 801 AND 802;
 DELETE FROM coer_spray_task WHERE id BETWEEN 701 AND 703;
 DELETE FROM coer_greenhouse_archive WHERE area_id IN (SELECT id FROM coer_greenhouse_area WHERE area_code IN ('A1', 'B2', 'C1', 'C2', 'C3'));
 DELETE FROM coer_greenhouse_area WHERE area_code IN ('A1', 'B2', 'C1', 'C2', 'C3');
+DELETE FROM device WHERE device_id = 'PPDV-0001';
 
 -- ============================================================
 -- 1. 温室区域（3 个不同风险等级）
@@ -41,8 +42,8 @@ UPDATE coer_greenhouse_area SET risk_status = 'HIGH_RISK'  WHERE area_code = 'A3
 -- ============================================================
 -- 2. 设备（已有则跳过）
 -- ============================================================
-INSERT IGNORE INTO device (device_id, name, model, status, firmware, secret, created_at)
-VALUES ('PPDV-0001', '无人车 1 号', 'PPDV-MK1', 'ONLINE', '1.2.0',
+INSERT INTO device (device_id, name, model, status, firmware, secret, created_at)
+VALUES ('PPDV-0001', '无人车 1 号', 'PPDV-MK1', 'OFFLINE', '1.2.0',
         'test-secret-0001', NOW());
 
 -- ============================================================
