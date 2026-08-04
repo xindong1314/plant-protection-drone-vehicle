@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
+import { getToken, removeToken, removeUsername } from '@/utils/auth'
 
 // 创建 axios 实例
 const service = axios.create({
@@ -9,10 +10,31 @@ const service = axios.create({
   timeout: 10000
 })
 
+// 请求拦截器 —— 自动附加 JWT Token
+service.interceptors.request.use(
+  config => {
+    const token = getToken()
+    if (token) {
+      config.headers['Authorization'] = 'Bearer ' + token
+    }
+    return config
+  },
+  error => {
+    return Promise.reject(error)
+  }
+)
+
 // 响应拦截器 —— 统一处理返回结果
 service.interceptors.response.use(
   res => {
     const code = res.data.code
+    // 401 = token 过期或无效，清 token 并跳回登录页
+    if (code === 401) {
+      removeToken()
+      removeUsername()
+      location.href = '/login'
+      return Promise.reject(new Error('登录已过期，请重新登录'))
+    }
     // 200 = 成功，直接把 data 返回给调用方
     if (code === 200) {
       return res.data
