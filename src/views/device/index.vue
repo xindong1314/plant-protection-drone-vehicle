@@ -1,86 +1,99 @@
 <template>
   <!-- 搜索表单 -->
   <div class="search-bar">
-    <el-input v-model="searchKeyword" style="width: 240px" placeholder="请输入您要搜索的内容" />
+    <el-input v-model="searchKeyword" style="width: 240px" placeholder="搜索设备编号/名称/状态/区域" />
     <el-button type="primary" :icon="Search" @click="handleSearch">搜索</el-button>
     <el-button :icon="Refresh" @click="handleReset">重置</el-button>
-  </div>
-
-  <!-- 新增按钮 -->
-  <div class="toolbar">
-    <el-button type="primary" :icon="Plus" @click="handleOpenDialog">新增</el-button>
-    <el-button type="danger" :icon="Delete" @click="handleDelete" :disabled="selectedRows.length === 0">删除</el-button>
+    <span class="auto-refresh-hint">每 30 秒自动刷新</span>
   </div>
 
   <!-- 数据表格 -->
-  <el-table v-loading="loading" :data="pagedData" style="width: 100%" @selection-change="handleSelectionChange">
-    <el-table-column type="selection" width="55" />
+  <el-table v-loading="loading" :data="pagedData" style="width: 100%" class="device-table">
     <el-table-column prop="deviceId" label="设备编号" width="120" />
-    <el-table-column prop="name" label="名称" width="120" />
-    <el-table-column prop="model" label="型号" show-overflow-tooltip />
+    <el-table-column prop="name" label="名称" width="140" />
+    <el-table-column prop="model" label="型号" width="120" show-overflow-tooltip />
+    <el-table-column prop="status" label="在线状态" width="100">
+      <template #default="{ row }">
+        <el-tag :type="row.status === 'ONLINE' ? 'success' : 'info'" size="small">
+          {{ row.status === 'ONLINE' ? '在线' : '离线' }}
+        </el-tag>
+      </template>
+    </el-table-column>
+    <el-table-column prop="battery" label="电量" width="180">
+      <template #default="{ row }">
+        <template v-if="row.battery != null">
+          <el-progress
+            :percentage="row.battery"
+            :stroke-width="16"
+            :color="batteryColor(row.battery)"
+          />
+        </template>
+        <span v-else class="text-muted">未上报</span>
+      </template>
+    </el-table-column>
+    <el-table-column prop="mode" label="工作模式" width="100">
+      <template #default="{ row }">
+        <el-tag v-if="row.mode" :type="modeTagType(row.mode)" size="small">
+          {{ modeLabel(row.mode) }}
+        </el-tag>
+        <span v-else>-</span>
+      </template>
+    </el-table-column>
+    <el-table-column prop="currentZone" label="所在区域" width="110">
+      <template #default="{ row }">
+        {{ row.currentZone || '-' }}
+      </template>
+    </el-table-column>
   </el-table>
 
   <!-- 分页器 -->
   <div class="pagination-bar">
-    <span class="page-info">{{ pagedData.length }}/10</span>
     <el-pagination
       v-model:current-page="currentPage"
       v-model:page-size="pageSize"
+      :page-sizes="[10, 20, 50]"
       :total="total"
-      layout="total, prev, pager, next, jumper"
+      layout="total, sizes, prev, pager, next, jumper"
       background
     />
   </div>
-
-  <!-- 新增弹窗 -->
-  <el-dialog v-model="dialogVisible" title="新增记录" width="500px">
-    <el-form ref="formRef" :model="formData" :rules="formRules" label-width="80px">
-      <el-form-item label="设备编号" prop="deviceId">
-        <el-input v-model="formData.deviceId" placeholder="请输入设备编号" />
-      </el-form-item>
-      <el-form-item label="名称" prop="name">
-        <el-input v-model="formData.name" placeholder="请输入名称" />
-      </el-form-item>
-      <el-form-item label="型号" prop="model">
-        <el-input v-model="formData.model" placeholder="请输入型号" />
-      </el-form-item>
-    </el-form>
-    <template #footer>
-      <el-button @click="dialogVisible = false">取消</el-button>
-      <el-button type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
-    </template>
-  </el-dialog>
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive, computed, onMounted } from 'vue'
-import { Search, Refresh, Plus, Delete } from '@element-plus/icons-vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { listDevice, addDevice, delDevice } from '@/api/ppdv/device'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { Search, Refresh } from '@element-plus/icons-vue'
+import { listDevice } from '@/api/ppdv/device'
 
-// ---------- 接口数据 ----------
-interface User {
+// ---------- 类型 ----------
+interface DeviceInfo {
   id: number
   deviceId: string
   name: string
   model: string
+  status: string
+  battery: number | null
+  mode: string | null
+  currentZone: string | null
+  lastSeenAt: string | null
+  firmware: string | null
 }
 
+// ---------- 数据 ----------
 const loading = ref(false)
 const searchKeyword = ref('')
-const allData = ref<User[]>([])
-const tableData = ref<User[]>([])
+const allData = ref<DeviceInfo[]>([])
+const tableData = ref<DeviceInfo[]>([])
 
 async function fetchList() {
   loading.value = true
   try {
     const res: any = await listDevice()
-    allData.value = (res.rows || []) as User[]
+    allData.value = (res.rows || []) as DeviceInfo[]
     tableData.value = [...allData.value]
     total.value = res.total
     currentPage.value = 1
   } catch {
-    // request.js 拦截器已弹错误提示，此处仅防止控制台出现 Uncaught 报错
+    // request.js 拦截器已弹错误提示
   } finally {
     loading.value = false
   }
@@ -94,7 +107,11 @@ function handleSearch() {
     total.value = allData.value.length
   } else {
     const filtered = allData.value.filter(
-      u => u.deviceId.toLowerCase().includes(kw) || u.name.toLowerCase().includes(kw) || u.model.toLowerCase().includes(kw)
+      d =>
+        d.deviceId.toLowerCase().includes(kw) ||
+        d.name.toLowerCase().includes(kw) ||
+        d.status.toLowerCase().includes(kw) ||
+        (d.currentZone && d.currentZone.toLowerCase().includes(kw))
     )
     tableData.value = filtered
     total.value = filtered.length
@@ -119,62 +136,48 @@ const pagedData = computed(() => {
   return tableData.value.slice(start, start + pageSize.value)
 })
 
-// ---------- 删除 ----------
-const selectedRows = ref<User[]>([])
-
-function handleSelectionChange(rows: User[]) {
-  selectedRows.value = rows
+// ---------- 渲染辅助 ----------
+function batteryColor(percentage: number): string {
+  if (percentage >= 60) return '#67C23A'
+  if (percentage >= 20) return '#E6A23C'
+  return '#F56C6C'
 }
 
-async function handleDelete() {
-  try {
-    await ElMessageBox.confirm('确定要删除选中的记录吗？', '提示', { type: 'warning' })
-    const ids = selectedRows.value.map(r => r.id).join(',')
-    await delDevice(ids)
-    ElMessage.success('删除成功')
-    await fetchList()
-  } catch {
-    // 用户取消 或 接口失败（request.js 拦截器已弹错误提示）
+function modeTagType(mode: string): string {
+  const map: Record<string, string> = {
+    AUTO: '',
+    MANUAL: 'warning',
+    PAUSED: 'info',
+    ESTOP: 'danger'
   }
+  return map[mode] || 'info'
 }
 
-// ---------- 新增弹窗 ----------
-const dialogVisible = ref(false)
-const submitLoading = ref(false)
-
-const formData = reactive({ deviceId: '', name: '', model: '' })
-const formRules = {
-  deviceId: [{ required: true, message: '请输入设备编号', trigger: 'blur' }],
-  name:     [{ required: true, message: '请输入名称', trigger: 'blur' }],
-  model:    [{ required: true, message: '请输入型号', trigger: 'blur' }],
-}
-const formRef = ref()
-
-function handleOpenDialog() {
-  formData.deviceId = ''
-  formData.name = ''
-  formData.model = ''
-  dialogVisible.value = true
-}
-
-async function handleSubmit() {
-  try {
-    await formRef.value?.validate()
-    submitLoading.value = true
-    await addDevice({ ...formData })
-    dialogVisible.value = false
-    ElMessage.success('新增成功')
-    await fetchList()
-  } catch {
-    // 校验不通过 或 接口失败，不做额外处理（request.js 拦截器已弹错误提示）
-  } finally {
-    submitLoading.value = false
+function modeLabel(mode: string): string {
+  const map: Record<string, string> = {
+    AUTO: '自动',
+    MANUAL: '手动',
+    PAUSED: '暂停',
+    ESTOP: '急停'
   }
+  return map[mode] || mode
 }
 
-// ---------- 初始加载 ----------
+// ---------- 自动轮询 ----------
+let refreshTimer: ReturnType<typeof setInterval> | null = null
+
 onMounted(() => {
   fetchList()
+  refreshTimer = setInterval(() => {
+    fetchList()
+  }, 30000)
+})
+
+onUnmounted(() => {
+  if (refreshTimer) {
+    clearInterval(refreshTimer)
+    refreshTimer = null
+  }
 })
 </script>
 
@@ -185,20 +188,24 @@ onMounted(() => {
   gap: 10px;
 }
 
-.toolbar {
-  margin: 16px 0;
+.auto-refresh-hint {
+  font-size: 12px;
+  color: #909399;
+  margin-left: auto;
+}
+
+.device-table {
+  margin-top: 16px;
+}
+
+.text-muted {
+  color: #909399;
+  font-size: 13px;
 }
 
 .pagination-bar {
   display: flex;
   justify-content: center;
-  align-items: center;
-  gap: 12px;
   margin-top: 16px;
-}
-
-.page-info {
-  font-size: 14px;
-  color: #606266;
 }
 </style>

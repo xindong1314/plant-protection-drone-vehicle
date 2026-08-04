@@ -191,6 +191,9 @@ function renderPieChart() {
   const byCategory = report.value?.anomalies?.byCategory || {}
   const pieData = Object.entries(byCategory).map(([name, value]) => ({ name, value }))
   pieChart.setOption({
+    textStyle: {
+      fontFamily: '"Microsoft YaHei", "PingFang SC", "SimHei", "Noto Sans SC", sans-serif'
+    },
     tooltip: { trigger: 'item' },
     legend: { bottom: 0 },
     series: [{

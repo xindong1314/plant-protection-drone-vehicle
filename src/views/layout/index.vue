@@ -25,7 +25,7 @@
         </el-menu-item>
         <el-menu-item index="/device">
           <el-icon><Monitor /></el-icon>
-          <span>设备管理</span>
+          <span>实时车况</span>
         </el-menu-item>
       </el-menu>
 
