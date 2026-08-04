@@ -25,3 +25,12 @@ export function delDevice(ids) {
     method: 'delete'
   })
 }
+
+// 查询设备遥测历史（状态）
+export function getStateHistory(deviceId, limit = 20) {
+  return request({
+    url: `/ppdv/device/${deviceId}/telemetry/state`,
+    method: 'get',
+    params: { limit }
+  })
+}
