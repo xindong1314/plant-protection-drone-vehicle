@@ -1,7 +1,11 @@
 <template>
   <div class="cockpit">
-    <div class="toolbar panel">
-      <span class="panel-title" style="border:0">驾驶舱</span>
+    <div class="page-heading">
+      <div><div class="eyebrow">LIVE TELEMETRY</div><h1>数字驾驶舱</h1><p>查看车辆姿态、能量状态和实时行驶轨迹</p></div>
+      <span class="live-status">遥测通道在线</span>
+    </div>
+    <div class="toolbar">
+      <span class="toolbar-label">当前设备</span>
       <el-select v-model="selectedId" placeholder="选择设备" style="width: 220px" @change="onSelect">
         <el-option v-for="d in devices" :key="d.deviceId" :label="`${d.deviceId} ${d.name || ''}`" :value="d.deviceId" />
       </el-select>
@@ -14,10 +18,10 @@
       </div>
     </div>
 
-    <div class="body">
-      <div class="left">
-        <div class="panel gauge-panel">
-          <div class="panel-title">实时状态</div>
+    <div class="cockpit-stage">
+      <div class="body">
+        <div class="gauge-panel dark-panel">
+          <div class="dark-title"><span>车辆状态</span><small>{{ selectedId || 'NO DEVICE' }}</small></div>
           <div ref="gaugeEl" class="gauge"></div>
           <div class="stat-grid">
             <div><span class="k">模式</span><span class="v">{{ state.mode || '-' }}</span></div>
@@ -28,11 +32,11 @@
             <div><span class="k">经度</span><span class="v">{{ fmt(state.lon, 6) }}</span></div>
           </div>
         </div>
-      </div>
-      <div class="panel map-panel">
-        <div class="panel-title">行驶轨迹</div>
-        <div ref="mapEl" class="map"></div>
-        <div v-if="mapError" class="map-mask">{{ mapError }}</div>
+        <div class="map-panel dark-panel">
+          <div class="dark-title"><span>实时轨迹</span><small>POSITION / ROUTE</small></div>
+          <div ref="mapEl" class="map"></div>
+          <div v-if="mapError" class="map-mask">{{ mapError }}</div>
+        </div>
       </div>
     </div>
   </div>
@@ -85,12 +89,13 @@ function renderGauge() {
         type: 'gauge',
         min: 0,
         max: 100,
-        progress: { show: true, width: 14 },
-        axisLine: { lineStyle: { width: 14 } },
-        axisLabel: { color: '#9db8dd', distance: 16 },
-        detail: { valueAnimation: true, formatter: '{value}%', color: '#46e0c0', fontSize: 26 },
+        progress: { show: true, width: 12, itemStyle: { color: '#76b900' } },
+        axisLine: { lineStyle: { width: 12, color: [[1, '#30382f']] } },
+        axisLabel: { color: '#7f897e', distance: 16 },
+        detail: { valueAnimation: true, formatter: '{value}%', color: '#f2f5f0', fontSize: 27 },
         data: [{ value: state.battery ?? 0, name: '电量' }],
-        title: { color: '#9db8dd' }
+        title: { color: '#7f897e' },
+        pointer: { itemStyle: { color: '#76b900' } }
       }
     ]
   })
@@ -120,7 +125,7 @@ async function onSelect(id) {
 function drawTrack() {
   if (!map || !AMapRef || !track.length) return
   if (!polyline) {
-    polyline = new AMapRef.Polyline({ path: track, strokeColor: '#46e0c0', strokeWeight: 4, map })
+    polyline = new AMapRef.Polyline({ path: track, strokeColor: '#76b900', strokeWeight: 4, map })
   } else {
     polyline.setPath(track)
   }
@@ -168,60 +173,78 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .cockpit {
-  height: 100%;
+  min-height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+}
+.cockpit .page-heading {
+  flex: 0 0 auto;
 }
 .toolbar {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 10px 14px;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #fff;
+  border: 1px solid var(--ag-border);
+  border-radius: var(--ag-radius);
+  margin-bottom: 12px;
 }
+.toolbar-label { color: var(--ag-muted); font-size: 12px; font-weight: 600; }
 .cmd-btns {
   margin-left: auto;
 }
+.cockpit-stage { min-height: 545px; flex: 1; padding: 10px; background: #0d110d; border: 1px solid #232a22; border-radius: var(--ag-radius); }
 .body {
-  flex: 1;
+  height: 100%;
   display: grid;
-  grid-template-columns: 340px 1fr;
-  gap: 12px;
+  grid-template-columns: 330px 1fr;
+  gap: 10px;
   min-height: 0;
 }
-.gauge-panel,
-.map-panel {
+.dark-panel { background: #171c17; border: 1px solid #303830; border-radius: 2px; }
+.gauge-panel, .map-panel {
   display: flex;
   flex-direction: column;
   position: relative;
 }
+.dark-title { height: 46px; flex: 0 0 46px; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; color: #e6eae4; border-bottom: 1px solid #303830; font-size: 12px; font-weight: 650; }
+.dark-title small { color: #687367; font-size: 9px; letter-spacing: 1px; }
 .gauge {
-  height: 220px;
+  height: 250px;
 }
 .stat-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  padding: 12px 16px;
+  gap: 1px;
+  margin: 0 14px 14px;
+  background: #303830;
+  border: 1px solid #303830;
+}
+.stat-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 12px;
+  background: #1b211b;
 }
 .stat-grid .k {
-  color: #9db8dd;
-  margin-right: 8px;
+  color: #707b70;
+  font-size: 10px;
 }
 .stat-grid .v {
-  color: #d6e6ff;
+  color: #e5e9e3;
+  font-family: monospace;
   font-weight: 600;
 }
-.map {
-  flex: 1;
-}
+.map { flex: 1; min-height: 450px; }
 .map-mask {
   position: absolute;
-  inset: 40px 0 0 0;
+  inset: 46px 0 0 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #9db8dd;
+  color: #899487;
   padding: 20px;
   text-align: center;
 }

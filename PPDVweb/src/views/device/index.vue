@@ -1,4 +1,9 @@
 <template>
+  <div class="device-page">
+  <div class="page-heading">
+    <div><div class="eyebrow">FLEET ASSETS</div><h1>设备管理</h1><p>管理车辆资产，查看在线状态与遥测明细</p></div>
+    <span class="live-status">每 30 秒自动刷新</span>
+  </div>
   <!-- 统计卡片 -->
   <el-row :gutter="16" class="stat-row">
     <el-col :span="6">
@@ -28,7 +33,7 @@
   </el-row>
 
   <!-- 搜索表单 -->
-  <div class="search-bar">
+  <div class="search-bar surface-card">
     <el-input v-model="searchKeyword" style="width: 240px" placeholder="搜索设备编号/名称/状态/区域" />
     <el-button type="primary" :icon="Search" @click="handleSearch">搜索</el-button>
     <el-button :icon="Refresh" @click="handleReset">重置</el-button>
@@ -36,6 +41,7 @@
   </div>
 
   <!-- 数据表格 -->
+  <div class="table-shell surface-card">
   <el-table v-loading="loading" :data="pagedData" style="width: 100%" class="device-table" @row-click="handleRowClick">
     <el-table-column prop="deviceId" label="设备编号" width="120" />
     <el-table-column prop="name" label="名称" width="140" />
@@ -96,6 +102,7 @@
       background
     />
   </div>
+  </div>
 
   <!-- 设备详情弹窗 -->
   <el-dialog
@@ -147,6 +154,7 @@
       </div>
     </div>
   </el-dialog>
+  </div>
 </template>
 
 <script lang="ts" setup>
@@ -244,9 +252,9 @@ const pagedData = computed(() => {
 
 // ---------- 渲染辅助 ----------
 function batteryColor(percentage: number): string {
-  if (percentage >= 60) return '#67C23A'
-  if (percentage >= 20) return '#E6A23C'
-  return '#F56C6C'
+  if (percentage >= 60) return '#76b900'
+  if (percentage >= 20) return '#c77700'
+  return '#d93025'
 }
 
 function modeTagType(mode: string): string {
@@ -326,11 +334,11 @@ function renderBatteryChart() {
       type: 'line',
       data: reversed.map((d: any) => d.battery),
       smooth: true,
-      lineStyle: { color: '#409EFF' },
-      itemStyle: { color: '#409EFF' },
+      lineStyle: { color: '#76b900' },
+      itemStyle: { color: '#76b900' },
       areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-        { offset: 0, color: 'rgba(64,158,255,0.3)' },
-        { offset: 1, color: 'rgba(64,158,255,0.05)' }
+        { offset: 0, color: 'rgba(118,185,0,0.25)' },
+        { offset: 1, color: 'rgba(118,185,0,0.02)' }
       ])}
     }]
   })
@@ -356,60 +364,61 @@ onUnmounted(() => {
 
 <style scoped>
 .stat-row {
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 }
+.stat-row :deep(.el-card__body) { min-height: 118px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 20px; }
 
 .stat-num {
-  font-size: 36px;
-  font-weight: bold;
-  color: #303133;
-  text-align: center;
+  font-size: 38px;
+  font-weight: 680;
+  color: var(--ag-ink);
+  letter-spacing: -1.5px;
 }
 
 .stat-num.online {
-  color: #67C23A;
+  color: var(--ag-success);
 }
 
 .stat-num.offline {
-  color: #909399;
+  color: var(--ag-muted);
 }
 
 .stat-label {
   font-size: 13px;
-  color: #909399;
-  text-align: center;
-  margin-top: 4px;
+  color: var(--ag-muted);
+  margin-top: 8px;
 }
 
 .search-bar {
   display: flex;
   align-items: center;
   gap: 10px;
+  padding: 13px 14px;
 }
 
 .refresh-time {
   font-size: 12px;
-  color: #909399;
+  color: var(--ag-muted);
   margin-left: auto;
 }
 
-.device-table {
-  margin-top: 16px;
-}
+.table-shell { margin-top: 12px; overflow: hidden; }
+.device-table { border-bottom: 1px solid var(--ag-border); }
 
 :deep(.el-table__row) {
   cursor: pointer;
 }
 
 .text-muted {
-  color: #909399;
+  color: var(--ag-muted);
   font-size: 13px;
 }
 
 .pagination-bar {
   display: flex;
   justify-content: center;
-  margin-top: 16px;
+  margin: 0;
+  padding: 14px;
 }
 
 .chart-section {
@@ -418,7 +427,7 @@ onUnmounted(() => {
 
 .chart-title {
   font-size: 14px;
-  color: #909399;
+  color: var(--ag-muted);
   margin-bottom: 8px;
 }
 
@@ -429,14 +438,14 @@ onUnmounted(() => {
 
 .chart-empty {
   text-align: center;
-  color: #909399;
+  color: var(--ag-muted);
   padding: 60px 0;
   font-size: 14px;
 }
 
 .track-info {
   font-size: 12px;
-  color: #909399;
+  color: var(--ag-muted);
   margin-top: 8px;
 }
 </style>

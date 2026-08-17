@@ -1,7 +1,11 @@
 <template>
   <div class="planning">
-    <div class="toolbar panel">
-      <span class="panel-title" style="border:0">作业规划</span>
+    <div class="page-heading">
+      <div><div class="eyebrow">MISSION PLANNING</div><h1>作业规划</h1><p>绘制作业地块与车辆路线，并设置任务参数</p></div>
+      <span class="live-status">规划服务可用</span>
+    </div>
+    <div class="toolbar">
+      <span class="toolbar-label">任务配置</span>
       <el-select v-model="deviceId" placeholder="选择设备" style="width: 200px">
         <el-option v-for="d in devices" :key="d.deviceId" :label="`${d.deviceId} ${d.name || ''}`" :value="d.deviceId" />
       </el-select>
@@ -15,10 +19,13 @@
       <el-button type="success" :disabled="!canAssign" @click="assign">下发任务</el-button>
     </div>
 
-    <div class="panel map-panel">
+    <div class="map-shell">
+    <div class="map-panel">
+      <div class="map-title"><span>作业地图</span><small>FIELD / ROUTE EDITOR</small></div>
       <div ref="mapEl" class="map"></div>
       <div v-if="mapError" class="map-mask">{{ mapError }}</div>
       <div class="hint" v-if="mapReady">已圈地块 {{ field.length }} 点 · 航线 {{ route.length }} 点</div>
+    </div>
     </div>
   </div>
 </template>
@@ -76,11 +83,11 @@ function onDraw(e) {
 }
 
 function drawField() {
-  mouseTool.polygon({ strokeColor: '#ffd166', fillColor: '#ffd166', fillOpacity: 0.15 })
+  mouseTool.polygon({ strokeColor: '#c77700', fillColor: '#c77700', fillOpacity: 0.18 })
 }
 
 function drawRoute() {
-  mouseTool.polyline({ strokeColor: '#46e0c0', strokeWeight: 4 })
+  mouseTool.polyline({ strokeColor: '#76b900', strokeWeight: 4 })
 }
 
 function clearAll() {
@@ -115,41 +122,68 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .planning {
-  height: 100%;
+  min-height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 12px;
 }
 .toolbar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
+  gap: 10px;
+  padding: 12px 14px;
   flex-wrap: wrap;
+  background: #fff;
+  border: 1px solid var(--ag-border);
+  border-radius: var(--ag-radius);
+  margin-bottom: 12px;
 }
+.toolbar-label { margin-right: 4px; color: var(--ag-muted); font-size: 12px; font-weight: 650; }
 .params {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #9db8dd;
+  color: var(--ag-muted);
+  font-size: 12px;
   margin-left: auto;
 }
+.map-shell { min-height: 560px; flex: 1; padding: 10px; background: #0d110d; border: 1px solid #232a22; border-radius: var(--ag-radius); }
 .map-panel {
-  flex: 1;
+  height: 100%;
   position: relative;
+  overflow: hidden;
+  background: #171c17;
+  border: 1px solid #303830;
+  border-radius: 2px;
 }
+.map-title {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 15px;
+  color: #e6eae4;
+  background: #171c17;
+  border-bottom: 1px solid #303830;
+  font-size: 12px;
+  font-weight: 650;
+}
+.map-title small { color: #687367; font-size: 9px; letter-spacing: 1px; }
 .map {
   position: absolute;
-  inset: 0;
-  border-radius: 8px;
+  inset: 46px 0 0;
 }
 .map-mask {
   position: absolute;
-  inset: 0;
+  inset: 46px 0 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #9db8dd;
+  color: #899487;
   padding: 20px;
   text-align: center;
 }
@@ -157,10 +191,11 @@ onBeforeUnmount(() => {
   position: absolute;
   left: 12px;
   bottom: 12px;
-  background: rgba(6, 21, 41, 0.8);
-  color: #7ec5ff;
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 13px;
+  background: #151b15;
+  color: #b7c2b5;
+  border: 1px solid #3a4438;
+  padding: 7px 10px;
+  border-radius: 2px;
+  font-size: 11px;
 }
 </style>
