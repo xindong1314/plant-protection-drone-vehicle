@@ -9,6 +9,8 @@
         <router-link to="/dashboard" class="nav-item" active-class="active">监控大屏</router-link>
         <router-link to="/cockpit" class="nav-item" active-class="active">驾驶舱</router-link>
         <router-link to="/planning" class="nav-item" active-class="active">作业规划</router-link>
+        <router-link to="/device" class="nav-item" active-class="active">设备管理</router-link>
+        <router-link to="/report" class="nav-item" active-class="active">数据报表</router-link>
       </nav>
       <div class="user">
         <span>{{ userStore.name || 'admin' }}</span>
