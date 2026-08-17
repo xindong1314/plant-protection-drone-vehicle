@@ -177,3 +177,102 @@ aside {
     margin-bottom: 10px;
   }
 }
+
+/* Agro Admin：高密度、低装饰的运营管理界面 */
+:root {
+  --ag-primary: #76b900;
+  --ag-primary-dark: #5f9500;
+  --ag-primary-soft: #edf6df;
+  --ag-canvas: #f3f5f0;
+  --ag-surface: #ffffff;
+  --ag-surface-muted: #f8f9f6;
+  --ag-ink: #171b17;
+  --ag-muted: #687267;
+  --ag-border: #d9ded4;
+  --ag-border-strong: #b9c1b3;
+  --el-border-radius-base: 3px;
+  --el-border-radius-small: 2px;
+  --el-border-color: var(--ag-border);
+  --el-text-color-primary: var(--ag-ink);
+}
+
+body {
+  background: var(--ag-canvas);
+  color: var(--ag-ink);
+  font-family: Inter, "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+label { font-weight: 600; }
+
+.app-main { background: var(--ag-canvas); }
+
+.app-container {
+  padding: 20px 22px;
+
+  > .el-form {
+    margin-bottom: 12px;
+    padding: 14px 14px 0;
+    background: var(--ag-surface);
+    border: 1px solid var(--ag-border);
+    border-radius: 4px;
+  }
+
+  > .el-table {
+    border: 1px solid var(--ag-border);
+    border-radius: 4px 4px 0 0;
+  }
+}
+
+.admin-page-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 18px;
+
+  h1 { margin: 4px 0 0; font-size: 24px; line-height: 1.25; letter-spacing: -.5px; }
+  p { margin: 6px 0 0; color: var(--ag-muted); font-size: 12px; }
+}
+
+.admin-eyebrow {
+  color: var(--ag-primary-dark);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+}
+
+.admin-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ag-muted);
+  font-size: 11px;
+
+  &::before { width: 7px; height: 7px; border-radius: 50%; background: var(--ag-primary); box-shadow: 0 0 0 4px rgba(118,185,0,.13); content: ''; }
+}
+
+.el-card { border-color: var(--ag-border) !important; border-radius: 4px !important; box-shadow: none !important; }
+.el-button { font-weight: 600; box-shadow: none !important; }
+.el-tag { border-radius: 2px; }
+.el-input__wrapper,
+.el-select__wrapper,
+.el-textarea__inner { box-shadow: 0 0 0 1px var(--ag-border) inset !important; }
+.el-table {
+  --el-table-header-bg-color: var(--ag-surface-muted);
+  --el-table-row-hover-bg-color: #f3f8eb;
+  --el-table-border-color: var(--ag-border);
+
+  th.el-table__cell { height: 43px; color: #525d51; font-size: 12px; font-weight: 650; }
+  td.el-table__cell { padding: 8px 0; }
+}
+.el-dialog { border: 1px solid var(--ag-border); border-radius: 4px; }
+.pagination-container { margin-top: 0 !important; padding: 14px !important; background: #fff; border: 1px solid var(--ag-border); border-top: 0; }
+
+.action-bar {
+  margin-bottom: 12px !important;
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid var(--ag-border);
+  border-radius: 4px;
+}
