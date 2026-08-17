@@ -44,14 +44,10 @@ INSERT INTO coer_risk_config (config_key, config_value, category, description, s
 ('risk.threshold.suspected',  '21', 'THRESHOLD',   '疑似异常阈值(>=)', 30, 'admin', NOW()),
 ('risk.threshold.high',       '51', 'THRESHOLD',   '高风险阈值(>=)',   31, 'admin', NOW());
 
--- ---------------------------- 菜单 ----------------------------
-INSERT INTO sys_menu (menu_id, menu_name, parent_id, order_num, path, component, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, remark)
-VALUES
-    (606, '风险配置', 10, 7, 'risk-config', 'ppdv/risk-config/index', 1, 0, 'C', '0', '0', 'ppdv:risk:config:list', 'edit', 'admin', NOW(), '风险评价规则配置'),
-    (607, '风险评估', 10, 8, 'risk-eval',   'ppdv/risk-eval/index',   1, 0, 'C', '0', '0', 'ppdv:risk:evaluate',   'bug', 'admin', NOW(), '手动风险评估');
-
+-- ---------------------------- API 权限 ----------------------------
+-- 页面尚未实现，仅登记可分配的接口权限，不创建失效的动态路由。
 INSERT INTO sys_menu (menu_id, menu_name, parent_id, order_num, path, component, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time)
 VALUES
-    (6061, '规则查询', 606, 1, '', NULL, 1, 0, 'F', '0', '0', 'ppdv:risk:config:query', '#', 'admin', NOW()),
-    (6062, '规则修改', 606, 2, '', NULL, 1, 0, 'F', '0', '0', 'ppdv:risk:config:edit',  '#', 'admin', NOW()),
-    (6071, '执行评估', 607, 1, '', NULL, 1, 0, 'F', '0', '0', 'ppdv:risk:evaluate',     '#', 'admin', NOW());
+    (6061, '规则查询', 10, 11, '', NULL, 1, 0, 'F', '0', '0', 'ppdv:risk:config:query', '#', 'admin', NOW()),
+    (6062, '规则修改', 10, 12, '', NULL, 1, 0, 'F', '0', '0', 'ppdv:risk:config:edit',  '#', 'admin', NOW()),
+    (6071, '执行评估', 10, 13, '', NULL, 1, 0, 'F', '0', '0', 'ppdv:risk:evaluate',     '#', 'admin', NOW());

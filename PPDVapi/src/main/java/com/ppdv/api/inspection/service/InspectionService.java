@@ -14,7 +14,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class InspectionService {
@@ -65,6 +67,9 @@ public class InspectionService {
     @Transactional
     public InspectionRecord completeInspection(Long id) {
         InspectionRecord record = getRecord(id);
+        if ("COMPLETED".equals(record.getStatus())) {
+            return record;
+        }
         record.setEndTime(LocalDateTime.now());
         record.setStatus("COMPLETED");
         InspectionRecord saved = recordRepository.save(record);
@@ -100,37 +105,47 @@ public class InspectionService {
 
     @Transactional
     public DetectionResult addDetection(DetectionResult result) {
-        return detectionRepository.save(result);
+        return addDetections(List.of(result)).get(0);
     }
 
     @Transactional
     public List<DetectionResult> addDetections(List<DetectionResult> results) {
-        if (results != null && !results.isEmpty()) {
-            DetectionResult first = results.get(0);
-            Long imageId = first.getImageId();
-            InspectionRecord record = null;
-            if (imageId != null) {
-                record = imageRepository.findById(imageId)
-                        .map(InspectionImage::getInspectionId)
-                        .flatMap(recordRepository::findById).orElse(null);
+        if (results == null || results.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, Integer> anomalyCountByInspection = new LinkedHashMap<>();
+        Map<Long, Long> areaByInspection = new LinkedHashMap<>();
+        for (DetectionResult result : results) {
+            if (result.getImageId() == null) {
+                continue;
             }
-            int anomalyCount = 0;
-            for (DetectionResult r : results) {
-                if (isAnomalyCategory(r.getCategory())) {
-                    anomalyCount++;
+            imageRepository.findById(result.getImageId()).ifPresent(image -> {
+                if (result.getAreaId() == null) {
+                    result.setAreaId(image.getAreaId());
                 }
-            }
-            if (record != null && anomalyCount > 0) {
+                if (image.getInspectionId() != null && isAnomalyCategory(result.getCategory())) {
+                    anomalyCountByInspection.merge(image.getInspectionId(), 1, Integer::sum);
+                    areaByInspection.putIfAbsent(image.getInspectionId(), image.getAreaId());
+                }
+            });
+        }
+
+        // 先落库并 flush，确保随后执行的风险评估能查询到本批识别结果。
+        List<DetectionResult> saved = detectionRepository.saveAllAndFlush(results);
+
+        anomalyCountByInspection.forEach((inspectionId, anomalyCount) -> {
+            recordRepository.findById(inspectionId).ifPresent(record -> {
                 record.setAnomalyCount(record.getAnomalyCount() + anomalyCount);
                 recordRepository.save(record);
-                // 联动：触发风险评估引擎 + 更新档案异常统计
-                if (record.getAreaId() != null) {
-                    riskEvalService.evaluate(record.getAreaId());
-                    archiveService.touchAnomaly(record.getAreaId(), anomalyCount);
+                Long areaId = record.getAreaId() != null ? record.getAreaId() : areaByInspection.get(inspectionId);
+                if (areaId != null) {
+                    riskEvalService.evaluate(areaId);
+                    archiveService.touchAnomaly(areaId, anomalyCount);
                 }
-            }
-        }
-        return detectionRepository.saveAll(results);
+            });
+        });
+        return saved;
     }
 
     @Transactional(readOnly = true)

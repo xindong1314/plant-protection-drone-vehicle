@@ -158,25 +158,17 @@ INSERT INTO coer_greenhouse_archive (area_id, total_inspections, total_anomalies
 SELECT id, 0, 0, 0, 'NORMAL', 'admin', NOW()
 FROM coer_greenhouse_area;
 
--- ---------------------------- 菜单权限 ----------------------------
--- 业务菜单（植保业务目录 menu_id=10 下追加）
-INSERT INTO sys_menu (menu_id, menu_name, parent_id, order_num, path, component, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, remark)
-VALUES
-    (602, '区域管理', 10, 3, 'area', 'ppdv/area/index', 1, 0, 'C', '0', '0', 'ppdv:area:list',  'tree',  'admin', NOW(), '大棚区域管理'),
-    (603, '巡检记录', 10, 4, 'inspection', 'ppdv/inspection/index', 1, 0, 'C', '0', '0', 'ppdv:inspection:list', 'camera', 'admin', NOW(), '巡检记录与识别结果'),
-    (604, '点喷复查', 10, 5, 'spray', 'ppdv/spray/index', 1, 0, 'C', '0', '0', 'ppdv:spray:list', 'guide', 'admin', NOW(), '点喷任务与复查记录'),
-    (605, '区域档案', 10, 6, 'archive', 'ppdv/archive/index', 1, 0, 'C', '0', '0', 'ppdv:archive:list', 'chart', 'admin', NOW(), '区域档案与数字地图');
-
--- 按钮权限
+-- ---------------------------- API 权限 ----------------------------
+-- 暂不创建页面菜单：对应 PPDVadmin 页面尚未实现。权限记录挂在业务目录下，避免动态路由指向不存在的组件。
 INSERT INTO sys_menu (menu_id, menu_name, parent_id, order_num, path, component, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time)
 VALUES
-    (6021, '区域查询', 602, 1, '', NULL, 1, 0, 'F', '0', '0', 'ppdv:area:query', '#', 'admin', NOW()),
-    (6022, '区域新增', 602, 2, '', NULL, 1, 0, 'F', '0', '0', 'ppdv:area:add',   '#', 'admin', NOW()),
-    (6023, '区域编辑', 602, 3, '', NULL, 1, 0, 'F', '0', '0', 'ppdv:area:edit',  '#', 'admin', NOW()),
-    (6024, '区域删除', 602, 4, '', NULL, 1, 0, 'F', '0', '0', 'ppdv:area:remove','#', 'admin', NOW()),
-    (6031, '巡检查询', 603, 1, '', NULL, 1, 0, 'F', '0', '0', 'ppdv:inspection:query',  '#', 'admin', NOW()),
-    (6032, '图片上传', 603, 2, '', NULL, 1, 0, 'F', '0', '0', 'ppdv:inspection:upload',  '#', 'admin', NOW()),
-    (6041, '点喷任务查询', 604, 1, '', NULL, 1, 0, 'F', '0', '0', 'ppdv:spray:query', '#', 'admin', NOW()),
-    (6042, '点喷任务创建', 604, 2, '', NULL, 1, 0, 'F', '0', '0', 'ppdv:spray:add',   '#', 'admin', NOW()),
-    (6043, '复查记录创建', 604, 3, '', NULL, 1, 0, 'F', '0', '0', 'ppdv:review:add',   '#', 'admin', NOW()),
-    (6051, '档案查询', 605, 1, '', NULL, 1, 0, 'F', '0', '0', 'ppdv:archive:query', '#', 'admin', NOW());
+    (6021, '区域查询', 10, 1, '', NULL, 1, 0, 'F', '0', '0', 'ppdv:area:query', '#', 'admin', NOW()),
+    (6022, '区域新增', 10, 2, '', NULL, 1, 0, 'F', '0', '0', 'ppdv:area:add',   '#', 'admin', NOW()),
+    (6023, '区域编辑', 10, 3, '', NULL, 1, 0, 'F', '0', '0', 'ppdv:area:edit',  '#', 'admin', NOW()),
+    (6024, '区域删除', 10, 4, '', NULL, 1, 0, 'F', '0', '0', 'ppdv:area:remove','#', 'admin', NOW()),
+    (6031, '巡检查询', 10, 5, '', NULL, 1, 0, 'F', '0', '0', 'ppdv:inspection:query',  '#', 'admin', NOW()),
+    (6032, '图片上传', 10, 6, '', NULL, 1, 0, 'F', '0', '0', 'ppdv:inspection:upload',  '#', 'admin', NOW()),
+    (6041, '点喷任务查询', 10, 7, '', NULL, 1, 0, 'F', '0', '0', 'ppdv:spray:query', '#', 'admin', NOW()),
+    (6042, '点喷任务管理', 10, 8, '', NULL, 1, 0, 'F', '0', '0', 'ppdv:spray:add',   '#', 'admin', NOW()),
+    (6043, '复查记录创建', 10, 9, '', NULL, 1, 0, 'F', '0', '0', 'ppdv:review:add',   '#', 'admin', NOW()),
+    (6051, '档案查询', 10, 10, '', NULL, 1, 0, 'F', '0', '0', 'ppdv:archive:query', '#', 'admin', NOW());

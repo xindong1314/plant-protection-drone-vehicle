@@ -67,7 +67,7 @@ public class PlantProtectionController extends BaseController {
         return AjaxResult.success(service.assignSprayTask(id, deviceId));
     }
 
-    @PreAuthorize("@ss.hasPermi('ppdv:spray:query')")
+    @PreAuthorize("@ss.hasPermi('ppdv:spray:add')")
     @PutMapping("/spray/{id}/status")
     public AjaxResult updateSprayStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
         return AjaxResult.success(service.updateSprayTaskStatus(id, body.get("status")));
@@ -77,11 +77,12 @@ public class PlantProtectionController extends BaseController {
     @PreAuthorize("@ss.hasPermi('ppdv:spray:add')")
     @PutMapping("/spray/{id}/execute")
     public AjaxResult executeSpray(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-        SprayTask task = service.updateSprayTaskStatus(id, "IN_PROGRESS");
+        SprayTask task = service.getSprayTask(id);
         String action = (String) body.getOrDefault("action", "start");
         Integer duration = body.get("duration") != null ? ((Number) body.get("duration")).intValue() : null;
         String msgId = commandService.sendSpray(task.getDeviceId(), action,
                 body.get("areaCode") != null ? (String) body.get("areaCode") : null, duration);
+        service.updateSprayTaskStatus(id, "IN_PROGRESS");
         return AjaxResult.success("点喷指令已下发", msgId);
     }
 

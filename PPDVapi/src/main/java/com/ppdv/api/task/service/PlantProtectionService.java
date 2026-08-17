@@ -13,9 +13,19 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @Service
 public class PlantProtectionService {
+
+    private static final Map<String, Set<String>> ALLOWED_TRANSITIONS = Map.of(
+            "PENDING", Set.of("ASSIGNED", "FAILED"),
+            "ASSIGNED", Set.of("IN_PROGRESS", "FAILED"),
+            "IN_PROGRESS", Set.of("COMPLETED", "FAILED"),
+            "COMPLETED", Set.of(),
+            "FAILED", Set.of()
+    );
 
     private final SprayTaskRepository sprayRepository;
     private final ReviewRecordRepository reviewRepository;
@@ -59,6 +69,10 @@ public class PlantProtectionService {
     @Transactional
     public SprayTask assignSprayTask(Long id, String deviceId) {
         SprayTask task = getSprayTask(id);
+        if (deviceId == null || deviceId.isBlank()) {
+            throw new IllegalArgumentException("设备编号不能为空");
+        }
+        ensureTransition(task.getStatus(), "ASSIGNED");
         task.setDeviceId(deviceId);
         task.setStatus("ASSIGNED");
         task.setAssignedAt(LocalDateTime.now());
@@ -68,6 +82,13 @@ public class PlantProtectionService {
     @Transactional
     public SprayTask updateSprayTaskStatus(Long id, String status) {
         SprayTask task = getSprayTask(id);
+        if (status == null || !ALLOWED_TRANSITIONS.containsKey(status)) {
+            throw new IllegalArgumentException("无效的任务状态: " + status);
+        }
+        if (status.equals(task.getStatus())) {
+            return task;
+        }
+        ensureTransition(task.getStatus(), status);
         task.setStatus(status);
         if ("COMPLETED".equals(status) || "FAILED".equals(status)) {
             task.setCompletedAt(LocalDateTime.now());
@@ -89,6 +110,13 @@ public class PlantProtectionService {
             areaService.updateRiskStatus(task.getAreaId(), "HIGH_RISK");
         }
         return saved;
+    }
+
+    private void ensureTransition(String currentStatus, String targetStatus) {
+        Set<String> allowed = ALLOWED_TRANSITIONS.get(currentStatus);
+        if (allowed == null || !allowed.contains(targetStatus)) {
+            throw new IllegalStateException("不允许的任务状态流转: " + currentStatus + " -> " + targetStatus);
+        }
     }
 
     // ---- 复查记录 ----
