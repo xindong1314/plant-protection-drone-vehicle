@@ -60,6 +60,8 @@ public class SecurityConfig {
                         .requestMatchers("/login", "/captchaImage").permitAll()
                         // EMQX 设备认证/授权回调（无 JWT，由控制器内共享密钥校验）
                         .requestMatchers("/api/emqx/**").permitAll()
+                        // 巡检图片静态资源（上传后通过 URL 直连访问）
+                        .requestMatchers("/uploads/**").permitAll()
                         // WebSocket 握手（令牌走 query 参数，在 handler 内校验）
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()

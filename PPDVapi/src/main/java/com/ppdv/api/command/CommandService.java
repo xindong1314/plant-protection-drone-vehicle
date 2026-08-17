@@ -50,6 +50,29 @@ public class CommandService {
         }
     }
 
+    /** 下发点喷指令（start/stop），返回本次 msgId。发布到 spray/req。 */
+    public String sendSpray(String deviceId, String action, String areaCode, Integer duration) {
+        deviceService.get(deviceId);
+        MqttPublisher publisher = publisherProvider.getIfAvailable();
+        if (publisher == null) {
+            throw new IllegalStateException("MQTT 未启用 (ppdv.mqtt.enabled=false)，无法下发点喷指令");
+        }
+        ObjectNode data = objectMapper.createObjectNode();
+        data.put("action", action);
+        data.put("areaCode", areaCode);
+        if (duration != null) {
+            data.put("duration", duration);
+        }
+        Envelope envelope = Envelope.of(deviceId, "spray", data);
+        try {
+            String payload = objectMapper.writeValueAsString(envelope);
+            publisher.publish(Topics.sprayReq(deviceId), payload);
+            return envelope.getMsgId();
+        } catch (Exception e) {
+            throw new IllegalStateException("点喷指令序列化失败: " + e.getMessage(), e);
+        }
+    }
+
     /** 下发作业任务（航线/地块/参数），返回本次 msgId。发布到 task/assign。 */
     public String sendTask(String deviceId, Map<String, Object> taskData) {
         deviceService.get(deviceId);

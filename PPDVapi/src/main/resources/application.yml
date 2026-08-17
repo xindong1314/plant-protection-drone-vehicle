@@ -4,6 +4,13 @@ server:
 spring:
   application:
     name: ppdvapi
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 100MB
+  web:
+    resources:
+      static-locations: classpath:/static,file:./uploads
   # 关系库：MySQL（业务 + 若依 RBAC），表结构由 Flyway 管理
   datasource:
     url: jdbc:mysql://localhost:13306/ppdv?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
@@ -55,6 +62,9 @@ ppdv:
     username: root
     password: taosdata
     database: ppdv_tsdb
+  # 文件上传（巡检图片存储）
+  upload:
+    base-dir: ./uploads
 
 logging:
   level:

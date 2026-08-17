@@ -110,4 +110,13 @@ public class DeviceService {
         }
         repository.save(d);
     }
+
+    /** 更新小车当前所在区域编号（ArUco/二维码识别后上报）。 */
+    @Transactional
+    public void updateZone(String deviceId, String zoneCode) {
+        Device d = ensure(deviceId);
+        d.setCurrentZone(zoneCode);
+        d.setLastSeenAt(Instant.now());
+        repository.save(d);
+    }
 }

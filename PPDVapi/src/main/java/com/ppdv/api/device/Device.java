@@ -48,5 +48,8 @@ public class Device {
     private Integer battery;
     private String mode;
 
+    /** 当前所在区域编号（由小车 ArUco/二维码识别后上报） */
+    private String currentZone;
+
     private Instant createdAt = Instant.now();
 }

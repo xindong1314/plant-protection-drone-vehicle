@@ -34,4 +34,15 @@ public class TelemetryController {
         }
         return AjaxResult.success(ts.queryStateHistory(deviceId, limit));
     }
+
+    @PreAuthorize("@ss.hasPermi('ppdv:device:query')")
+    @GetMapping("/env")
+    public AjaxResult envHistory(@PathVariable String deviceId,
+                                 @RequestParam(defaultValue = "200") int limit) {
+        TelemetryTsService ts = tsServiceProvider.getIfAvailable();
+        if (ts == null) {
+            return AjaxResult.success(List.of());
+        }
+        return AjaxResult.success(ts.queryEnvHistory(deviceId, limit));
+    }
 }

@@ -34,6 +34,9 @@ public class TelemetryTsService implements InitializingBean {
         jdbc.execute("CREATE STABLE IF NOT EXISTS " + db + ".tele_work (" +
                 "ts TIMESTAMP, spraying BOOL, flow DOUBLE, pressure DOUBLE, tank_level INT, " +
                 "sprayed_area DOUBLE, dosage DOUBLE) TAGS (device_id NCHAR(64))");
+        jdbc.execute("CREATE STABLE IF NOT EXISTS " + db + ".env_sensor (" +
+                "ts TIMESTAMP, temperature DOUBLE, humidity DOUBLE, light DOUBLE, " +
+                "soil_moisture DOUBLE, co2 DOUBLE) TAGS (device_id NCHAR(64))");
         log.info("TDengine 时序库已就绪: {}", db);
     }
 
@@ -66,6 +69,28 @@ public class TelemetryTsService implements InitializingBean {
             return jdbc.queryForList(sql, deviceId);
         } catch (Exception e) {
             log.warn("查询遥测历史失败 device={}, err={}", deviceId, e.getMessage());
+            return List.of();
+        }
+    }
+
+    /** 写环境传感器遥测（温度/湿度/光照/土壤湿度/CO2）。 */
+    public void writeEnv(String deviceId, long ts, JsonNode data) {
+        String sub = "e_" + subTable(deviceId).substring(2);
+        String sql = "INSERT INTO " + db + "." + sub + " USING " + db + ".env_sensor TAGS ('" + esc(deviceId) + "') " +
+                "VALUES (" + ts + ", " +
+                num(data, "temperature") + ", " + num(data, "humidity") + ", " + num(data, "light") + ", " +
+                num(data, "soilMoisture") + ", " + num(data, "co2") + ")";
+        safeExec(sql);
+    }
+
+    /** 查询某设备的环境遥测历史（按时间倒序）。 */
+    public List<Map<String, Object>> queryEnvHistory(String deviceId, int limit) {
+        String sql = "SELECT ts, temperature, humidity, light, soil_moisture, co2 FROM " + db + ".env_sensor " +
+                "WHERE device_id = ? ORDER BY ts DESC LIMIT " + Math.max(1, Math.min(limit, 5000));
+        try {
+            return jdbc.queryForList(sql, deviceId);
+        } catch (Exception e) {
+            log.warn("查询环境历史失败 device={}, err={}", deviceId, e.getMessage());
             return List.of();
         }
     }
