@@ -2,15 +2,31 @@ package com.ppdv.api.system.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.MappedSuperclass;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
- * 公共审计字段。
+ * 公共审计字段。JPA 自动填充 createTime / updateTime。
  */
 @MappedSuperclass
 public abstract class BaseEntity implements Serializable {
+
+    @PrePersist
+    protected void prePersist() {
+        LocalDateTime now = LocalDateTime.now();
+        if (createTime == null) {
+            createTime = now;
+        }
+        updateTime = now;
+    }
+
+    @PreUpdate
+    protected void preUpdate() {
+        updateTime = LocalDateTime.now();
+    }
 
     @Column(name = "create_by")
     private String createBy;

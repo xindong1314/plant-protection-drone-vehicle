@@ -21,7 +21,7 @@ public class TelemetryIngestService {
 
     private static final Logger log = LoggerFactory.getLogger(TelemetryIngestService.class);
 
-    private static final Set<String> LIVE_KINDS = Set.of("status", "tele/state", "tele/work", "event/alarm", "task/progress");
+    private static final Set<String> LIVE_KINDS = Set.of("status", "tele/state", "tele/work", "tele/env", "tele/zone", "event/alarm", "task/progress");
 
     private final DeviceService deviceService;
     private final ObjectMapper objectMapper;
@@ -52,6 +52,8 @@ public class TelemetryIngestService {
                 case "status" -> handleStatus(deviceId, data);
                 case "tele/state" -> handleState(deviceId, ts, data);
                 case "tele/work" -> handleWork(deviceId, ts, data);
+                case "tele/env" -> handleEnv(deviceId, ts, data);
+                case "tele/zone" -> handleZone(deviceId, data);
                 case "task/progress", "cmd/ack" -> log.debug("[{}] {} -> {}", deviceId, kind, payload);
                 case "event/alarm" -> handleAlarm(deviceId, data);
                 default -> log.debug("未处理的主题种类 {}: {}", kind, topic);
@@ -106,6 +108,25 @@ public class TelemetryIngestService {
             ts_.writeWork(deviceId, ts, data);
         } else {
             log.debug("[{}] tele/work（未启用时序库）", deviceId);
+        }
+    }
+
+    private void handleEnv(String deviceId, long ts, JsonNode data) {
+        TelemetryTsService ts_ = tsServiceProvider.getIfAvailable();
+        if (ts_ != null) {
+            ts_.writeEnv(deviceId, ts, data);
+        } else {
+            log.debug("[{}] tele/env（未启用时序库）", deviceId);
+        }
+    }
+
+    private void handleZone(String deviceId, JsonNode data) {
+        String zoneCode = data.hasNonNull("zoneCode") ? data.get("zoneCode").asText() : null;
+        if (zoneCode != null) {
+            deviceService.updateZone(deviceId, zoneCode);
+            log.info("[{}] 进入区域: {}", deviceId, zoneCode);
+        } else {
+            log.debug("[{}] tele/zone 未携带 zoneCode", deviceId);
         }
     }
 

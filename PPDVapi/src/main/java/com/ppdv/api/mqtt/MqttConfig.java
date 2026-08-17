@@ -58,7 +58,7 @@ public class MqttConfig {
         MqttPahoMessageDrivenChannelAdapter adapter = new MqttPahoMessageDrivenChannelAdapter(
                 props.getClientIdPrefix() + "-in", factory,
                 Topics.SUB_STATUS, Topics.SUB_STATE, Topics.SUB_WORK,
-                Topics.SUB_ALARM, Topics.SUB_PROGRESS, Topics.SUB_ACK);
+                Topics.SUB_ENV, Topics.SUB_ZONE, Topics.SUB_ALARM, Topics.SUB_PROGRESS, Topics.SUB_ACK);
         adapter.setCompletionTimeout(5000);
         adapter.setConverter(new DefaultPahoMessageConverter());
         adapter.setQos(1);

@@ -17,6 +17,8 @@ public final class Topics {
     public static final String SUB_WORK = PREFIX + "+/tele/work";
     public static final String SUB_ALARM = PREFIX + "+/event/alarm";
     public static final String SUB_PROGRESS = PREFIX + "+/task/progress";
+    public static final String SUB_ENV = PREFIX + "+/tele/env";
+    public static final String SUB_ZONE = PREFIX + "+/tele/zone";
     public static final String SUB_ACK = PREFIX + "+/cmd/ack";
 
     // 下行发布
@@ -30,6 +32,10 @@ public final class Topics {
 
     public static String configSet(String deviceId) {
         return PREFIX + deviceId + "/config/set";
+    }
+
+    public static String sprayReq(String deviceId) {
+        return PREFIX + deviceId + "/spray/req";
     }
 
     /** 从上行主题解析出 deviceId：ppdv/v1/{deviceId}/... */
