@@ -1,5 +1,9 @@
 <template>
   <div class="dashboard-page">
+    <div class="page-heading">
+      <div><div class="eyebrow">OPERATIONS OVERVIEW</div><h1>监控总览</h1><p>聚合设备状态、实时事件与作业告警</p></div>
+      <span class="live-status">实时数据已连接</span>
+    </div>
     <!-- 1. 统计卡片行 -->
     <el-row :gutter="16" class="stat-row">
       <el-col :span="6">
@@ -112,8 +116,8 @@ function renderStatusPie() {
       label: { show: false },
       emphasis: { scaleSize: 8 },
       data: [
-        { value: store.onlineCount, name: '在线', itemStyle: { color: '#67C23A' } },
-        { value: Math.max(offline, 0), name: '离线', itemStyle: { color: '#C0C4CC' } },
+        { value: store.onlineCount, name: '在线', itemStyle: { color: '#76b900' } },
+        { value: Math.max(offline, 0), name: '离线', itemStyle: { color: '#d9ded4' } },
       ]
     }]
   })
@@ -132,9 +136,9 @@ function renderBatteryBar() {
       type: 'bar',
       data: list.map(d => {
         const v = d.battery ?? 0
-        let color = '#F56C6C'
-        if (v >= 60) color = '#67C23A'
-        else if (v >= 20) color = '#E6A23C'
+        let color = '#d93025'
+        if (v >= 60) color = '#76b900'
+        else if (v >= 20) color = '#c77700'
         return { value: v, itemStyle: { color } }
       }),
     }]
@@ -202,34 +206,34 @@ onUnmounted(() => {
 
 <style scoped>
 .dashboard-page { padding: 0; }
-.stat-row { margin-bottom: 16px; }
+.stat-row { margin-bottom: 18px; }
+.stat-row :deep(.el-card__body) { min-height: 122px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 20px; }
 .stat-num {
-  font-size: 36px; font-weight: bold; color: #303133; text-align: center;
+  font-size: 38px; font-weight: 680; color: var(--ag-ink); letter-spacing: -1.5px;
 }
-.stat-num.online { color: #67C23A; }
-.stat-num.spraying { color: #409EFF; }
-.stat-num.danger { color: #F56C6C; }
+.stat-num.online, .stat-num.spraying { color: var(--ag-success); }
+.stat-num.danger { color: var(--ag-danger); }
 .stat-sub {
-  font-size: 12px; color: #909399; text-align: center; margin-top: -2px;
+  font-size: 11px; color: var(--ag-muted); margin-top: -2px;
 }
 .stat-label {
-  font-size: 13px; color: #909399; text-align: center; margin-top: 6px;
+  font-size: 12px; color: var(--ag-muted); margin-top: 9px;
 }
-.alarm-card { border-left: 3px solid #F56C6C; }
-.card-title { font-size: 14px; color: #909399; margin-bottom: 12px; }
-.chart-row { margin-bottom: 16px; }
+.alarm-card { border-left: 3px solid var(--ag-danger) !important; }
+.card-title { font-size: 14px; color: var(--ag-ink); font-weight: 650; margin-bottom: 12px; }
+.chart-row { margin-bottom: 18px; }
 .chart-container { width: 100%; height: 280px; }
-.chart-empty { text-align: center; color: #909399; padding: 80px 0; font-size: 14px; }
+.chart-empty { text-align: center; color: var(--ag-muted); padding: 80px 0; font-size: 13px; }
 .bottom-row { margin-bottom: 16px; }
 
 .event-list { max-height: 280px; overflow-y: auto; }
-.event-empty { text-align: center; color: #909399; padding: 60px 0; font-size: 14px; }
+.event-empty { text-align: center; color: var(--ag-muted); padding: 60px 0; font-size: 13px; }
 .event-item {
-  display: flex; gap: 8px; padding: 6px 0; border-bottom: 1px solid #f0f0f0;
+  display: flex; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--ag-border);
   font-size: 13px; align-items: baseline;
 }
 .event-item:last-child { border-bottom: none; }
-.event-time { color: #C0C4CC; white-space: nowrap; font-family: monospace; }
-.event-device { color: #409EFF; font-family: monospace; white-space: nowrap; font-weight: 500; }
-.event-summary { color: #303133; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.event-time { color: #9aa299; white-space: nowrap; font-family: monospace; }
+.event-device { color: var(--ag-success); font-family: monospace; white-space: nowrap; font-weight: 600; }
+.event-summary { color: var(--ag-ink); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>

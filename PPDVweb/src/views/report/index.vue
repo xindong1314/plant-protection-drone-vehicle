@@ -1,7 +1,11 @@
 <template>
   <div class="report-page">
+    <div class="page-heading">
+      <div><div class="eyebrow">PERFORMANCE ANALYTICS</div><h1>数据报表</h1><p>分析巡检、异常、点喷任务和区域风险</p></div>
+      <span class="live-status">数据统计服务正常</span>
+    </div>
     <!-- 1. 时间范围筛选栏 -->
-    <div class="filter-bar">
+    <div class="filter-bar surface-card">
       <el-date-picker
         v-model="filter.startTime"
         type="datetime"
@@ -201,6 +205,7 @@ function renderPieChart() {
       radius: ['40%', '70%'],
       center: ['50%', '45%'],
       data: pieData,
+      color: ['#76b900', '#3f493f', '#c77700', '#8ea17e', '#d93025'],
       label: { formatter: '{b}: {c}' },
       emphasis: {
         scaleSize: 10
@@ -236,50 +241,54 @@ onMounted(() => {
   align-items: center;
   gap: 10px;
   margin-bottom: 16px;
+  padding: 13px 14px;
 }
 
 .filter-sep {
-  color: #909399;
+  color: var(--ag-muted);
 }
 
 .filter-period {
   font-size: 12px;
-  color: #909399;
+  color: var(--ag-muted);
   margin-left: 12px;
 }
 
 .card-row {
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 }
+.card-row :deep(.el-card__body) { min-height: 142px; padding: 20px; }
 
 .card-title {
   font-size: 14px;
-  color: #909399;
+  color: var(--ag-ink);
+  font-weight: 650;
   margin-bottom: 12px;
 }
 
 .card-stats {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: 20px;
 }
 
 .stat-item {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   min-width: 60px;
 }
 
 .stat-num {
   font-size: 28px;
-  font-weight: bold;
-  color: #303133;
+  font-weight: 680;
+  color: var(--ag-ink);
+  letter-spacing: -1px;
 }
 
 .stat-label {
   font-size: 12px;
-  color: #909399;
+  color: var(--ag-muted);
   margin-top: 4px;
 }
 
