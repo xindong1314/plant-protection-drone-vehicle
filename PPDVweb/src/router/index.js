@@ -10,7 +10,9 @@ const routes = [
     children: [
       { path: 'dashboard', name: 'dashboard', component: () => import('@/views/dashboard/index.vue'), meta: { title: '监控大屏' } },
       { path: 'cockpit', name: 'cockpit', component: () => import('@/views/cockpit/index.vue'), meta: { title: '驾驶舱' } },
-      { path: 'planning', name: 'planning', component: () => import('@/views/planning/index.vue'), meta: { title: '作业规划' } }
+      { path: 'planning', name: 'planning', component: () => import('@/views/planning/index.vue'), meta: { title: '作业规划' } },
+      { path: 'device', name: 'device', component: () => import('@/views/device/index.vue'), meta: { title: '设备管理' } },
+      { path: 'report', name: 'report', component: () => import('@/views/report/index.vue'), meta: { title: '数据报表' } }
     ]
   }
 ]
