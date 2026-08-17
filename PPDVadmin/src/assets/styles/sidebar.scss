@@ -24,8 +24,8 @@
     left: 0;
     z-index: 1001;
     overflow: hidden;
-    -webkit-box-shadow: 2px 0 6px rgba(0,21,41,.35);
-    box-shadow: 0px 0px 8px 0px rgba(0, 0, 0, 0.1);
+    box-shadow: none;
+    border-right: 1px solid #293028;
 
     // reset element-ui css
     .horizontal-collapse-transition {
@@ -46,7 +46,7 @@
 
     &.has-logo {
       .el-scrollbar {
-        height: calc(100% - 50px);
+        height: calc(100% - 58px);
       }
     }
 
@@ -114,11 +114,21 @@
 
     // theme-dark 深色主题
     &.theme-dark {
-      box-shadow: 2px 0 8px rgba(0, 0, 0, 0.4);
+      box-shadow: none;
       border-right: none;
 
       .el-menu-item.is-active {
         position: relative;
+
+        &::after {
+          content: '';
+          position: absolute;
+          left: 0;
+          top: 9px;
+          bottom: 9px;
+          width: 3px;
+          background: #76b900;
+        }
 
         &::before {
           content: '';

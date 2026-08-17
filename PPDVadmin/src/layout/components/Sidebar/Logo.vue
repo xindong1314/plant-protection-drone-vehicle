@@ -1,102 +1,46 @@
 <template>
-  <div class="sidebar-logo-container" :class="{ 'collapse': collapse }">
-    <transition name="sidebarLogoFade">
-      <router-link v-if="collapse" key="collapse" class="sidebar-logo-link" to="/">
-        <img v-if="logo" :src="logo" class="sidebar-logo" />
-        <h1 v-else class="sidebar-title">{{ title }}</h1>
-      </router-link>
-      <router-link v-else key="expand" class="sidebar-logo-link" to="/">
-        <img v-if="logo" :src="logo" class="sidebar-logo" />
-        <h1 class="sidebar-title">{{ title }}</h1>
-      </router-link>
-    </transition>
+  <div class="sidebar-logo-container" :class="{ collapse }">
+    <router-link class="sidebar-logo-link" to="/">
+      <span class="brand-mark">A</span>
+      <span v-if="!collapse" class="brand-copy"><strong>管理控制台</strong><small>AGRO ADMIN</small></span>
+    </router-link>
   </div>
 </template>
 
 <script setup>
-import logo from '@/assets/logo/logo.png'
-import useSettingsStore from '@/store/modules/settings'
-import variables from '@/assets/styles/variables.module.scss'
-
 defineProps({
-  collapse: {
-    type: Boolean,
-    required: true
-  }
-})
-
-const title = import.meta.env.VITE_APP_TITLE
-const settingsStore = useSettingsStore()
-const sideTheme = computed(() => settingsStore.sideTheme)
-
-// 获取Logo背景色
-const getLogoBackground = computed(() => {
-  if (settingsStore.isDark) {
-    return 'var(--sidebar-bg)'
-  }
-  if (settingsStore.navType == 3) {
-    return variables.menuLightBg
-  }
-  return sideTheme.value === 'theme-dark' ? variables.menuBg : variables.menuLightBg
-})
-
-// 获取Logo文字颜色
-const getLogoTextColor = computed(() => {
-  if (settingsStore.isDark) {
-    return 'var(--sidebar-logo-text)'
-  }
-  if (settingsStore.navType == 3) {
-    return variables.menuLightText
-  }
-  return sideTheme.value === 'theme-dark' ? '#fff' : variables.menuLightText
+  collapse: { type: Boolean, required: true }
 })
 </script>
 
 <style lang="scss" scoped>
-.sidebarLogoFade-enter-active {
-  transition: opacity 1.5s;
-}
-
-.sidebarLogoFade-enter,
-.sidebarLogoFade-leave-to {
-  opacity: 0;
-}
-
 .sidebar-logo-container {
-  position: relative;
-  height: 50px;
-  line-height: 50px;
-  background: v-bind(getLogoBackground);
-  text-align: center;
+  height: 58px;
   overflow: hidden;
-
-  & .sidebar-logo-link {
-    height: 100%;
-    width: 100%;
-
-    & .sidebar-logo {
-      width: 32px;
-      height: 32px;
-      vertical-align: middle;
-      margin-right: 12px;
-    }
-
-    & .sidebar-title {
-      display: inline-block;
-      margin: 0;
-      color: v-bind(getLogoTextColor);
-      font-weight: 600;
-      line-height: 50px;
-      font-size: 14px;
-      font-family: Avenir, Helvetica Neue, Arial, Helvetica, sans-serif;
-      vertical-align: middle;
-    }
-  }
-
-  &.collapse {
-    .sidebar-logo {
-      margin-right: 0px;
-    }
-  }
+  background: #0f130f;
+  border-bottom: 1px solid #2b322a;
 }
+.sidebar-logo-link {
+  height: 100%;
+  display: flex !important;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+}
+.brand-mark {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  display: grid;
+  place-items: center;
+  color: #101410;
+  background: #76b900;
+  font-size: 17px;
+  font-weight: 900;
+}
+.brand-copy strong,
+.brand-copy small { display: block; white-space: nowrap; }
+.brand-copy strong { color: #eef2ec; font-size: 13px; letter-spacing: .4px; }
+.brand-copy small { margin-top: 3px; color: #737d71; font-size: 8px; letter-spacing: 1.4px; }
+.collapse .sidebar-logo-link { justify-content: center; padding: 0; }
 </style>

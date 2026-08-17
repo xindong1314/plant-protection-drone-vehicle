@@ -1,5 +1,9 @@
 <template>
   <div class="app-container">
+    <div class="admin-page-heading">
+      <div><div class="admin-eyebrow">DEVICE ASSETS</div><h1>设备管理</h1><p>登记车辆、维护一机一密并下发控制指令</p></div>
+      <span class="admin-live">设备服务已连接</span>
+    </div>
     <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch">
       <el-form-item label="设备编号" prop="deviceId">
         <el-input v-model="queryParams.deviceId" placeholder="请输入设备编号" clearable style="width: 200px" @keyup.enter="handleQuery" />
@@ -10,7 +14,7 @@
       </el-form-item>
     </el-form>
 
-    <el-row :gutter="10" class="mb8">
+    <el-row :gutter="10" class="mb8 action-bar">
       <el-col :span="1.5">
         <el-button type="primary" plain icon="Plus" @click="handleAdd" v-hasPermi="['ppdv:device:add']">登记设备</el-button>
       </el-col>

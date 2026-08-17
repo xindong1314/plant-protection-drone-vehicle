@@ -9,13 +9,16 @@ const toggleDark = useToggle(isDark)
 const { sideTheme, showSettings, navType, tagsView, tagsViewPersist, tagsIcon, tagsViewStyle, fixedHeader, sidebarLogo, dynamicTitle, footerVisible, footerContent } = defaultSettings
 
 const storageSetting = JSON.parse(localStorage.getItem('layout-setting')) || ''
+const defaultTheme = !storageSetting.theme || storageSetting.theme.toLowerCase() === '#409eff'
+  ? '#76B900'
+  : storageSetting.theme
 
 const useSettingsStore = defineStore(
   'settings',
   {
     state: () => ({
       title: '',
-      theme: storageSetting.theme || '#409EFF',
+      theme: defaultTheme,
       sideTheme: storageSetting.sideTheme || sideTheme,
       showSettings: showSettings,
       navType: storageSetting.navType === undefined ? navType : storageSetting.navType,

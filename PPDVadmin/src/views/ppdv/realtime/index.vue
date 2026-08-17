@@ -1,13 +1,22 @@
 <template>
   <div class="app-container">
-    <el-row :gutter="10" class="mb8">
+    <div class="admin-page-heading">
+      <div><div class="admin-eyebrow">LIVE TELEMETRY</div><h1>实时状态</h1><p>监控车辆在线状态、位置与遥测历史</p></div>
+      <span class="admin-live">{{ auto ? '每 5 秒自动刷新' : '手动刷新模式' }}</span>
+    </div>
+    <div class="realtime-summary">
+      <div><small>设备总数</small><strong>{{ deviceList.length }}</strong></div>
+      <div><small>当前在线</small><strong class="positive">{{ onlineCount }}</strong></div>
+      <div><small>当前离线</small><strong>{{ deviceList.length - onlineCount }}</strong></div>
+    </div>
+    <el-row :gutter="10" class="mb8 action-bar">
       <el-col :span="1.5">
         <el-button type="primary" plain icon="Refresh" @click="getList">刷新</el-button>
       </el-col>
       <el-col :span="1.5">
         <el-switch v-model="auto" active-text="自动刷新(5s)" @change="toggleAuto" />
       </el-col>
-      <el-col :span="6" style="line-height: 32px; color: #909399">
+      <el-col :span="6" class="online-copy">
         在线 {{ onlineCount }} / 共 {{ deviceList.length }} 台
       </el-col>
     </el-row>
@@ -101,3 +110,14 @@ function showHistory(row) {
 onMounted(getList)
 onBeforeUnmount(() => { if (timer) clearInterval(timer) })
 </script>
+
+<style scoped lang="scss">
+.realtime-summary { display: grid; grid-template-columns: repeat(3, minmax(150px, 220px)); gap: 10px; margin-bottom: 12px; }
+.realtime-summary > div { padding: 14px 16px; background: #fff; border: 1px solid var(--ag-border); border-radius: 4px; }
+.realtime-summary small, .realtime-summary strong { display: block; }
+.realtime-summary small { color: var(--ag-muted); font-size: 10px; }
+.realtime-summary strong { margin-top: 7px; color: var(--ag-ink); font-size: 25px; line-height: 1; }
+.realtime-summary strong.positive { color: #5f9500; }
+.action-bar { padding: 10px 12px; background: #fff; border: 1px solid var(--ag-border); border-radius: 4px; }
+.online-copy { line-height: 32px; color: var(--ag-muted); font-size: 11px; }
+</style>
