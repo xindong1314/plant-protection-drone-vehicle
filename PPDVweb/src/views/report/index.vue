@@ -27,6 +27,7 @@
       />
       <el-button type="primary" :icon="Search" @click="handleQuery">查询</el-button>
       <el-button :icon="Refresh" @click="handleReset">重置</el-button>
+      <el-button :icon="Download" :disabled="!report || loading" @click="handleExport">导出 CSV</el-button>
       <span v-if="report" class="filter-period">
         当前范围：{{ report.period?.start || '不限' }} — {{ report.period?.end || '不限' }}
       </span>
@@ -151,7 +152,7 @@
 
 <script lang="ts" setup>
 import { ref, reactive, onMounted, nextTick } from 'vue'
-import { Search, Refresh } from '@element-plus/icons-vue'
+import { Search, Refresh, Download } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import { getReport } from '@/api/ppdv/report'
 
@@ -224,6 +225,73 @@ function handleReset() {
   filter.startTime = null
   filter.endTime = null
   fetchReport()
+}
+
+function escapeCsv(value: unknown): string {
+  const raw = value == null ? '' : String(value)
+  // Excel 会将以公式字符开头的单元格作为公式执行，使用单引号强制按文本处理。
+  const text = /^[\t ]*[=+\-@]/.test(raw) ? `'${raw}` : raw
+  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
+}
+
+function formatFileTime(date = new Date()): string {
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`
+}
+
+/** 将当前查询结果导出为 UTF-8 BOM CSV，可直接用 Excel 打开。 */
+function handleExport() {
+  if (!report.value) return
+
+  const data = report.value
+  const rows: unknown[][] = [
+    ['植保无人车数据报表'],
+    ['统计范围', data.period?.start || '不限', data.period?.end || '不限'],
+    [],
+    ['巡检统计'],
+    ['指标', '数值'],
+    ['总数', data.inspections?.total ?? 0],
+    ['已完成', data.inspections?.completed ?? 0],
+    ['进行中', data.inspections?.inProgress ?? 0],
+    [],
+    ['异常统计'],
+    ['指标', '数值'],
+    ['总数', data.anomalies?.total ?? 0],
+    ...Object.entries(data.anomalies?.byCategory || {}).map(([category, count]) => [`分类：${category}`, count]),
+    [],
+    ['点喷任务统计'],
+    ['指标', '数值'],
+    ['总数', data.sprayTasks?.total ?? 0],
+    ['已完成', data.sprayTasks?.completed ?? 0],
+    ['失败', data.sprayTasks?.failed ?? 0],
+    ['待处理', data.sprayTasks?.pending ?? 0],
+    [],
+    ['复查统计'],
+    ['指标', '数值'],
+    ['总数', data.reviews?.total ?? 0],
+    ['通过', data.reviews?.passed ?? 0],
+    ['失败', data.reviews?.failed ?? 0],
+    ['需重喷', data.reviews?.needRetry ?? 0],
+    [],
+    ['区域概览'],
+    ['区域编号', '名称', '风险状态', '巡检次数', '异常次数'],
+    ...(data.areas || []).map((area: any) => [
+      area.areaCode,
+      area.areaName,
+      area.riskStatus,
+      area.totalInspections,
+      area.totalAnomalies
+    ])
+  ]
+  const csv = '\uFEFF' + rows.map(row => row.map(escapeCsv).join(',')).join('\r\n')
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `植保无人车数据报表-${formatFileTime()}.csv`
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
 }
 
 onMounted(() => {
