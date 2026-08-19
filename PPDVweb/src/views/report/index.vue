@@ -228,7 +228,9 @@ function handleReset() {
 }
 
 function escapeCsv(value: unknown): string {
-  const text = value == null ? '' : String(value)
+  const raw = value == null ? '' : String(value)
+  // Excel 会将以公式字符开头的单元格作为公式执行，使用单引号强制按文本处理。
+  const text = /^[\t ]*[=+\-@]/.test(raw) ? `'${raw}` : raw
   return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
 }
 

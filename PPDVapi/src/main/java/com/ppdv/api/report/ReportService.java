@@ -102,9 +102,11 @@ public class ReportService {
             m.put("areaName", area.getAreaName());
             m.put("riskStatus", area.getRiskStatus());
             m.put("totalInspections", inspections.stream()
-                    .filter(r -> area.getId().equals(r.getAreaId())).count());
+                    .filter(r -> area.getId().equals(r.getAreaId())
+                            && inRange(r.getStartTime(), startTime, endTime)).count());
             m.put("totalAnomalies", detections.stream()
-                    .filter(d -> area.getId().equals(d.getAreaId())).count());
+                    .filter(d -> area.getId().equals(d.getAreaId())
+                            && inRange(d.getCreateTime(), startTime, endTime)).count());
             return m;
         }).toList();
         report.put("areas", areaList);
