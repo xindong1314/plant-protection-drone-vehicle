@@ -9,7 +9,7 @@
       <el-select v-model="selectedId" placeholder="选择设备" style="width: 220px" @change="onSelect">
         <el-option v-for="d in devices" :key="d.deviceId" :label="`${d.deviceId} ${d.name || ''}`" :value="d.deviceId" />
       </el-select>
-      <div class="cmd-btns" v-if="selectedId">
+      <div class="cmd-btns" v-if="selectedId && canCommand">
         <el-button size="small" type="success" @click="cmd('START')">启动</el-button>
         <el-button size="small" type="warning" @click="cmd('PAUSE')">暂停</el-button>
         <el-button size="small" @click="cmd('RESUME')">继续</el-button>
@@ -49,6 +49,7 @@ import { ElMessage } from 'element-plus'
 import { listDevice, stateHistory, sendCommand } from '@/api/device'
 import { loadAMap } from '@/utils/amap'
 import { connectTelemetry } from '@/utils/ws'
+import { useUserStore } from '@/store/user'
 
 const devices = ref([])
 const selectedId = ref('')
@@ -57,6 +58,8 @@ const online = ref(false)
 const gaugeEl = ref()
 const mapEl = ref()
 const mapError = ref('')
+const userStore = useUserStore()
+const canCommand = computed(() => userStore.hasPermission('ppdv:device:command'))
 
 let gauge = null
 let AMapRef = null

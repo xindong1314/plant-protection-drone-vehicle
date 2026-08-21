@@ -9,14 +9,14 @@
       <el-select v-model="deviceId" placeholder="选择设备" style="width: 200px">
         <el-option v-for="d in devices" :key="d.deviceId" :label="`${d.deviceId} ${d.name || ''}`" :value="d.deviceId" />
       </el-select>
-      <el-button size="small" :disabled="!mapReady" @click="drawField">圈地块</el-button>
-      <el-button size="small" type="primary" :disabled="!mapReady" @click="drawRoute">画航线</el-button>
-      <el-button size="small" @click="clearAll" :disabled="!mapReady">清除</el-button>
+      <el-button v-if="canCommand" size="small" :disabled="!mapReady" @click="drawField">圈地块</el-button>
+      <el-button v-if="canCommand" size="small" type="primary" :disabled="!mapReady" @click="drawRoute">画航线</el-button>
+      <el-button v-if="canCommand" size="small" @click="clearAll" :disabled="!mapReady">清除</el-button>
       <div class="params">
         <span>速度</span><el-input-number v-model="params.speed" :min="0.1" :max="5" :step="0.1" size="small" />
         <span>亩用量(L)</span><el-input-number v-model="params.dosePerMu" :min="0" :max="10" :step="0.1" size="small" />
       </div>
-      <el-button type="success" :disabled="!canAssign" @click="assign">下发任务</el-button>
+      <el-button v-if="canCommand" type="success" :disabled="!canAssign" @click="assign">下发任务</el-button>
     </div>
 
     <div class="map-shell">
@@ -35,6 +35,7 @@ import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import { listDevice, assignTask } from '@/api/device'
 import { loadAMap } from '@/utils/amap'
+import { useUserStore } from '@/store/user'
 
 const devices = ref([])
 const deviceId = ref('')
@@ -44,6 +45,8 @@ const mapError = ref('')
 const params = reactive({ speed: 1.5, dosePerMu: 0.9 })
 const field = ref([])
 const route = ref([])
+const userStore = useUserStore()
+const canCommand = computed(() => userStore.hasPermission('ppdv:device:command'))
 
 let AMapRef = null
 let map = null

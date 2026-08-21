@@ -42,7 +42,7 @@
 
   <!-- 数据表格 -->
   <div class="table-shell surface-card">
-  <el-table v-loading="loading" :data="pagedData" style="width: 100%" class="device-table" @row-click="handleRowClick">
+  <el-table v-loading="loading" :data="pagedData" style="width: 100%" class="device-table" @row-click="canQueryDevice && handleRowClick">
     <el-table-column prop="deviceId" label="设备编号" width="120" />
     <el-table-column prop="name" label="名称" width="140" />
     <el-table-column prop="model" label="型号" width="120" show-overflow-tooltip />
@@ -86,7 +86,8 @@
     </el-table-column>
     <el-table-column label="操作" width="100">
       <template #default="{ row }">
-        <el-button type="primary" link size="small" @click.stop="handleRowClick(row)">查看详情</el-button>
+        <el-button v-if="canQueryDevice" type="primary" link size="small" @click.stop="handleRowClick(row)">查看详情</el-button>
+        <span v-else class="text-muted">无查看权限</span>
       </template>
     </el-table-column>
   </el-table>
@@ -162,6 +163,7 @@ import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { Search, Refresh } from '@element-plus/icons-vue'
 import { listDevice, getStateHistory } from '@/api/ppdv/device'
 import * as echarts from 'echarts'
+import { useUserStore } from '@/store/user'
 
 // ---------- 类型 ----------
 interface DeviceInfo {
@@ -185,6 +187,8 @@ const searchKeyword = ref('')
 const allData = ref<DeviceInfo[]>([])
 const tableData = ref<DeviceInfo[]>([])
 const lastRefreshTime = ref('--:--:--')
+const userStore = useUserStore()
+const canQueryDevice = computed(() => userStore.hasPermission('ppdv:device:query'))
 
 async function fetchList() {
   loading.value = true

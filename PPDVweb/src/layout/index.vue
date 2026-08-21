@@ -7,7 +7,7 @@
       </div>
       <div class="nav-label">作业中心</div>
       <nav class="nav">
-        <router-link v-for="item in navItems" :key="item.path" :to="item.path" class="nav-item" active-class="active">
+        <router-link v-for="item in visibleNavItems" :key="item.path" :to="item.path" class="nav-item" active-class="active">
           <el-icon><component :is="item.icon" /></el-icon>
           <span><strong>{{ item.title }}</strong><small>{{ item.subtitle }}</small></span>
         </router-link>
@@ -41,12 +41,13 @@ const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const navItems = [
-  { path: '/dashboard', title: '监控总览', subtitle: '运营数据与告警', icon: DataLine },
-  { path: '/cockpit', title: '数字驾驶舱', subtitle: '实时遥测与态势', icon: Monitor },
-  { path: '/planning', title: '作业规划', subtitle: '区域与任务编排', icon: MapLocation },
-  { path: '/device', title: '设备管理', subtitle: '车辆资产与状态', icon: SetUp },
-  { path: '/report', title: '数据报表', subtitle: '效率与趋势分析', icon: PieChart }
+  { path: '/dashboard', title: '监控总览', subtitle: '运营数据与告警', icon: DataLine, permissions: ['ppdv:device:list', 'ppdv:inspection:query'] },
+  { path: '/cockpit', title: '数字驾驶舱', subtitle: '实时遥测与态势', icon: Monitor, permissions: ['ppdv:device:list', 'ppdv:device:query'] },
+  { path: '/planning', title: '作业规划', subtitle: '区域与任务编排', icon: MapLocation, permissions: ['ppdv:device:list', 'ppdv:device:command'] },
+  { path: '/device', title: '设备管理', subtitle: '车辆资产与状态', icon: SetUp, permissions: ['ppdv:device:list'] },
+  { path: '/report', title: '数据报表', subtitle: '效率与趋势分析', icon: PieChart, permissions: ['ppdv:inspection:query'] }
 ]
+const visibleNavItems = computed(() => navItems.filter(item => userStore.hasAllPermissions(item.permissions)))
 const currentPage = computed(() => navItems.find((item) => route.path.startsWith(item.path)) || navItems[0])
 
 onMounted(() => {
