@@ -34,7 +34,7 @@
 <script setup>
 import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { DataLine, Monitor, MapLocation, SetUp, PieChart } from '@element-plus/icons-vue'
+import { DataLine, Monitor, MapLocation, SetUp, PieChart, Warning } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
 
 const route = useRoute()
@@ -44,6 +44,7 @@ const navItems = [
   { path: '/dashboard', title: '监控总览', subtitle: '运营数据与告警', icon: DataLine },
   { path: '/cockpit', title: '数字驾驶舱', subtitle: '实时遥测与态势', icon: Monitor },
   { path: '/planning', title: '作业规划', subtitle: '区域与任务编排', icon: MapLocation },
+  { path: '/risk', title: '风险管理', subtitle: '规则配置与计算', icon: Warning },
   { path: '/device', title: '设备管理', subtitle: '车辆资产与状态', icon: SetUp },
   { path: '/report', title: '数据报表', subtitle: '效率与趋势分析', icon: PieChart }
 ]
