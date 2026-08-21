@@ -44,6 +44,7 @@ const navItems = [
   { path: '/dashboard', title: '监控总览', subtitle: '运营数据与告警', icon: DataLine },
   { path: '/cockpit', title: '数字驾驶舱', subtitle: '实时遥测与态势', icon: Monitor },
   { path: '/planning', title: '作业规划', subtitle: '区域与任务编排', icon: MapLocation },
+  { path: '/area', title: '区域管理', subtitle: '地块边界与风险', icon: MapLocation },
   { path: '/device', title: '设备管理', subtitle: '车辆资产与状态', icon: SetUp },
   { path: '/report', title: '数据报表', subtitle: '效率与趋势分析', icon: PieChart }
 ]

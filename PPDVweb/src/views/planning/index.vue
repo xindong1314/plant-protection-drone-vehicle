@@ -9,6 +9,9 @@
       <el-select v-model="deviceId" placeholder="选择设备" style="width: 200px">
         <el-option v-for="d in devices" :key="d.deviceId" :label="`${d.deviceId} ${d.name || ''}`" :value="d.deviceId" />
       </el-select>
+      <el-select v-model="selectedAreaId" clearable placeholder="选择已保存区域" style="width: 200px" @change="applySavedArea">
+        <el-option v-for="area in areas" :key="area.id" :label="`${area.areaCode} ${area.areaName || ''}`" :value="area.id" />
+      </el-select>
       <el-button size="small" :disabled="!mapReady" @click="drawField">圈地块</el-button>
       <el-button size="small" type="primary" :disabled="!mapReady" @click="drawRoute">画航线</el-button>
       <el-button size="small" @click="clearAll" :disabled="!mapReady">清除</el-button>
@@ -34,6 +37,7 @@
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import { listDevice, assignTask } from '@/api/device'
+import { listArea } from '@/api/area'
 import { loadAMap } from '@/utils/amap'
 
 const devices = ref([])
@@ -44,6 +48,8 @@ const mapError = ref('')
 const params = reactive({ speed: 1.5, dosePerMu: 0.9 })
 const field = ref([])
 const route = ref([])
+const areas = ref([])
+const selectedAreaId = ref(null)
 
 let AMapRef = null
 let map = null
@@ -55,6 +61,8 @@ const canAssign = computed(() => deviceId.value && route.value.length > 1)
 async function init() {
   const res = await listDevice({ pageNum: 1, pageSize: 200 })
   devices.value = res.rows || []
+  const areaRes = await listArea()
+  areas.value = areaRes.data || []
   try {
     AMapRef = await loadAMap()
     map = new AMapRef.Map(mapEl.value, { zoom: 15, center: [120.65, 30.12], mapStyle: 'amap://styles/darkblue' })
@@ -95,13 +103,32 @@ function clearAll() {
   overlays = []
   field.value = []
   route.value = []
+  selectedAreaId.value = null
+}
+
+function applySavedArea(id) {
+  const area = areas.value.find(item => item.id === id)
+  if (!area) return
+  try {
+    const boundary = JSON.parse(area.boundaryJson || '[]')
+    if (!Array.isArray(boundary) || boundary.length < 3) {
+      ElMessage.warning('该区域尚未配置 GIS 地块边界')
+      return
+    }
+    field.value = boundary
+    const polygon = new AMapRef.Polygon({ path: boundary, strokeColor: '#c77700', fillColor: '#c77700', fillOpacity: 0.18 })
+    overlays.push(polygon)
+    map.add(polygon)
+    map.setFitView([polygon])
+  } catch (_) { ElMessage.warning('区域边界数据格式错误') }
 }
 
 async function assign() {
   const taskId = 'T-' + Date.now()
   const payload = {
     taskId,
-    fieldId: 'F-LOCAL',
+    fieldId: selectedAreaId.value ? `AREA-${selectedAreaId.value}` : 'F-LOCAL',
+    areaId: selectedAreaId.value,
     route: route.value,
     field: field.value,
     params: { speed: params.speed, dosePerMu: params.dosePerMu }

@@ -48,6 +48,9 @@ public class AreaService {
         if (area.getSortOrder() == null) {
             area.setSortOrder(0);
         }
+        if (area.getCoordinateSystem() == null || area.getCoordinateSystem().isBlank()) {
+            area.setCoordinateSystem("GCJ-02");
+        }
         return repository.save(area);
     }
 
@@ -58,6 +61,10 @@ public class AreaService {
         db.setAreaName(area.getAreaName());
         db.setGreenhouseName(area.getGreenhouseName());
         db.setArucoId(area.getArucoId());
+        db.setBoundaryJson(area.getBoundaryJson());
+        if (area.getCoordinateSystem() != null && !area.getCoordinateSystem().isBlank()) {
+            db.setCoordinateSystem(area.getCoordinateSystem());
+        }
         if (area.getRiskStatus() != null) {
             db.setRiskStatus(area.getRiskStatus());
         }
