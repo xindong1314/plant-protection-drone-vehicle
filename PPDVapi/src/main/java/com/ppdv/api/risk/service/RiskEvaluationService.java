@@ -94,6 +94,7 @@ public class RiskEvaluationService {
         int score = 0;
         int cap = configService.getInt("risk.score.detection_max", 80);
         for (DetectionResult r : results) {
+            if ("IGNORED".equalsIgnoreCase(r.getStatus())) continue;
             if (r.getCategory() == null) continue;
             String key = CATEGORY_KEY.getOrDefault(r.getCategory(), null);
             if (key == null) continue;
@@ -149,6 +150,11 @@ public class RiskEvaluationService {
 
         // 查该区域最近的异常记录
         List<DetectionResult> anomalies = detectionRepo.findByAreaIdOrderByIdDesc(area.getId());
+        if (anomalies != null) {
+            anomalies = anomalies.stream()
+                    .filter(result -> !"IGNORED".equalsIgnoreCase(result.getStatus()))
+                    .toList();
+        }
         boolean hasRecentAnomaly = anomalies != null && !anomalies.isEmpty()
                 && isAnomalyCategory(anomalies.get(0).getCategory());
 

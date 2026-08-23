@@ -55,7 +55,7 @@ function handleLogin() {
     try {
       await userStore.login(form)
       ElMessage.success('登录成功')
-      router.push('/')
+      router.replace('/')
     } catch (e) {
       // 错误由请求拦截器统一提示
     } finally {

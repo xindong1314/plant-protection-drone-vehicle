@@ -6,17 +6,30 @@
     </div>
     <div class="toolbar">
       <span class="toolbar-label">任务配置</span>
-      <el-select v-model="deviceId" placeholder="选择设备" style="width: 200px">
+      <el-select v-model="deviceId" placeholder="选择在线设备" style="width: 200px">
         <el-option v-for="d in devices" :key="d.deviceId" :label="`${d.deviceId} ${d.name || ''}`" :value="d.deviceId" />
       </el-select>
-      <el-button size="small" :disabled="!mapReady" @click="drawField">圈地块</el-button>
-      <el-button size="small" type="primary" :disabled="!mapReady" @click="drawRoute">画航线</el-button>
-      <el-button size="small" @click="clearAll" :disabled="!mapReady">清除</el-button>
+      <el-select
+        v-if="canListArea"
+        v-model="selectedAreaId"
+        clearable
+        :loading="areasLoading"
+        :disabled="areaListUnavailable || !mapReady"
+        :placeholder="areaListUnavailable ? '区域列表不可用' : '选择已保存区域'"
+        style="width: 200px"
+        @change="applySavedArea"
+      >
+        <el-option v-for="area in areas" :key="area.id" :label="`${area.areaCode} ${area.areaName || ''}`" :value="area.id" />
+      </el-select>
+      <span v-else class="area-fallback">无区域列表权限，可手绘地块</span>
+      <el-button v-if="canCommand" size="small" :disabled="!mapReady" @click="drawField">圈地块</el-button>
+      <el-button v-if="canCommand" size="small" type="primary" :disabled="!mapReady" @click="drawRoute">画航线</el-button>
+      <el-button v-if="canCommand" size="small" @click="clearAll" :disabled="!mapReady">清除</el-button>
       <div class="params">
-        <span>速度</span><el-input-number v-model="params.speed" :min="0.1" :max="5" :step="0.1" size="small" />
-        <span>亩用量(L)</span><el-input-number v-model="params.dosePerMu" :min="0" :max="10" :step="0.1" size="small" />
+        <span>速度</span><el-input-number v-model="params.speed" :min="0.1" :max="5" :step="0.1" size="small" :disabled="!canCommand" />
+        <span>亩用量(L)</span><el-input-number v-model="params.dosePerMu" :min="0" :max="10" :step="0.1" size="small" :disabled="!canCommand" />
       </div>
-      <el-button type="success" :disabled="!canAssign" @click="assign">下发任务</el-button>
+      <el-button v-if="canCommand" type="success" :disabled="!canAssign" @click="assign">下发任务</el-button>
     </div>
 
     <div class="map-shell">
@@ -34,7 +47,9 @@
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import { listDevice, assignTask } from '@/api/device'
+import { listArea } from '@/api/area'
 import { loadAMap } from '@/utils/amap'
+import { useUserStore } from '@/store/user'
 
 const devices = ref([])
 const deviceId = ref('')
@@ -44,17 +59,24 @@ const mapError = ref('')
 const params = reactive({ speed: 1.5, dosePerMu: 0.9 })
 const field = ref([])
 const route = ref([])
+const areas = ref([])
+const areasLoading = ref(false)
+const areaListUnavailable = ref(false)
+const selectedAreaId = ref(null)
+const userStore = useUserStore()
 
 let AMapRef = null
 let map = null
 let mouseTool = null
-let overlays = []
+let activeDrawType = null
+let fieldOverlay = null
+let routeOverlay = null
 
-const canAssign = computed(() => deviceId.value && route.value.length > 1)
+const canCommand = computed(() => userStore.hasPermission('ppdv:device:command'))
+const canListArea = computed(() => userStore.hasPermission('ppdv:area:list'))
+const canAssign = computed(() => canCommand.value && deviceId.value && field.value.length >= 3 && route.value.length > 1)
 
-async function init() {
-  const res = await listDevice({ pageNum: 1, pageSize: 200 })
-  devices.value = res.rows || []
+async function initMap() {
   try {
     AMapRef = await loadAMap()
     map = new AMapRef.Map(mapEl.value, { zoom: 15, center: [120.65, 30.12], mapStyle: 'amap://styles/darkblue' })
@@ -66,42 +88,144 @@ async function init() {
   }
 }
 
+async function loadDevices() {
+  try {
+    const res = await listDevice({ pageNum: 1, pageSize: 200 })
+    devices.value = (res.rows || []).filter(device => device.status === 'ONLINE')
+  } catch (_) {
+    devices.value = []
+  }
+}
+
+async function loadAreas() {
+  if (!canListArea.value) return
+  areasLoading.value = true
+  areaListUnavailable.value = false
+  try {
+    const res = await listArea()
+    areas.value = res.data || []
+  } catch (_) {
+    areas.value = []
+    areaListUnavailable.value = true
+    clearField()
+  } finally {
+    areasLoading.value = false
+  }
+}
+
 function pathToArr(path) {
   return path.map((p) => [p.getLng(), p.getLat()])
 }
 
 function onDraw(e) {
   const obj = e.obj
-  overlays.push(obj)
-  const arr = pathToArr(obj.getPath())
-  if (obj.CLASS_NAME && obj.CLASS_NAME.indexOf('Polygon') >= 0) {
-    field.value = arr
-  } else {
-    route.value = arr
-  }
-  mouseTool.close(false)
+  const drawType = activeDrawType
+  const path = obj?.getPath ? pathToArr(obj.getPath()) : []
+  activeDrawType = null
+  if (obj && map) map.remove(obj)
+  mouseTool?.close(true)
+  if (!drawType) return
+  if (drawType === 'field') setField(path, null)
+  else setRoute(path)
 }
 
 function drawField() {
+  if (!canCommand.value || !mouseTool) return
+  mouseTool.close(true)
+  activeDrawType = 'field'
+  clearField()
   mouseTool.polygon({ strokeColor: '#c77700', fillColor: '#c77700', fillOpacity: 0.18 })
 }
 
 function drawRoute() {
+  if (!canCommand.value || !mouseTool) return
+  mouseTool.close(true)
+  activeDrawType = 'route'
+  clearRoute()
   mouseTool.polyline({ strokeColor: '#76b900', strokeWeight: 4 })
 }
 
-function clearAll() {
-  overlays.forEach((o) => map.remove(o))
-  overlays = []
+function removeOverlay(overlay) {
+  if (overlay && map) map.remove(overlay)
+}
+
+function clearField() {
+  removeOverlay(fieldOverlay)
+  fieldOverlay = null
   field.value = []
+  selectedAreaId.value = null
+}
+
+function clearRoute() {
+  removeOverlay(routeOverlay)
+  routeOverlay = null
   route.value = []
 }
 
+function setField(boundary, areaId) {
+  clearField()
+  if (!Array.isArray(boundary) || boundary.length < 3 || !map || !AMapRef) return
+  field.value = boundary
+  selectedAreaId.value = areaId
+  fieldOverlay = new AMapRef.Polygon({ path: boundary, strokeColor: '#c77700', fillColor: '#c77700', fillOpacity: 0.18 })
+  map.add(fieldOverlay)
+}
+
+function setRoute(points) {
+  clearRoute()
+  if (!Array.isArray(points) || points.length < 2 || !map || !AMapRef) return
+  route.value = points
+  routeOverlay = new AMapRef.Polyline({ path: points, strokeColor: '#76b900', strokeWeight: 4 })
+  map.add(routeOverlay)
+}
+
+function clearAll() {
+  mouseTool?.close(true)
+  activeDrawType = null
+  clearField()
+  clearRoute()
+}
+
+function parseBoundary(area) {
+  try {
+    const raw = JSON.parse(area?.boundaryJson || '[]')
+    if (!Array.isArray(raw) || raw.length < 3) return []
+    const boundary = raw.map(point => {
+      if (!Array.isArray(point) || point.length < 2) return null
+      const lng = Number(point[0])
+      const lat = Number(point[1])
+      return Number.isFinite(lng) && Number.isFinite(lat) && lng >= -180 && lng <= 180 && lat >= -90 && lat <= 90
+        ? [lng, lat]
+        : null
+    })
+    return boundary.every(Boolean) ? boundary : []
+  } catch (_) {
+    return []
+  }
+}
+
+function applySavedArea(id) {
+  mouseTool?.close(true)
+  activeDrawType = null
+  clearField()
+  if (id === null || id === undefined || id === '') return
+  const area = areas.value.find(item => item.id === id)
+  const boundary = parseBoundary(area)
+  if (!area || !boundary.length) {
+    ElMessage.warning(area ? '该区域的 GIS 地块边界缺失或格式错误' : '未找到所选区域')
+    return
+  }
+  setField(boundary, area.id)
+  map.setFitView([fieldOverlay])
+}
+
 async function assign() {
+  if (!canAssign.value) return
   const taskId = 'T-' + Date.now()
   const payload = {
     taskId,
-    fieldId: 'F-LOCAL',
+    fieldId: selectedAreaId.value !== null ? `AREA-${selectedAreaId.value}` : 'F-LOCAL',
+    areaId: selectedAreaId.value,
     route: route.value,
     field: field.value,
     params: { speed: params.speed, dosePerMu: params.dosePerMu }
@@ -114,8 +238,15 @@ async function assign() {
   }
 }
 
-onMounted(init)
+onMounted(() => {
+  initMap()
+  loadDevices()
+  loadAreas()
+})
 onBeforeUnmount(() => {
+  mouseTool?.close(true)
+  removeOverlay(fieldOverlay)
+  removeOverlay(routeOverlay)
   if (map) map.destroy()
 })
 </script>
@@ -138,6 +269,7 @@ onBeforeUnmount(() => {
   margin-bottom: 12px;
 }
 .toolbar-label { margin-right: 4px; color: var(--ag-muted); font-size: 12px; font-weight: 650; }
+.area-fallback { color: var(--ag-muted); font-size: 11px; }
 .params {
   display: flex;
   align-items: center;

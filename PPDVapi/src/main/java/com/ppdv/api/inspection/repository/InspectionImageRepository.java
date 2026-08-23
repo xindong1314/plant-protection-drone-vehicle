@@ -11,4 +11,6 @@ public interface InspectionImageRepository extends JpaRepository<InspectionImage
     List<InspectionImage> findByInspectionIdOrderByCapturedAtAsc(Long inspectionId);
 
     List<InspectionImage> findByAreaIdOrderByCapturedAtDesc(Long areaId);
+
+    boolean existsByAreaId(Long areaId);
 }

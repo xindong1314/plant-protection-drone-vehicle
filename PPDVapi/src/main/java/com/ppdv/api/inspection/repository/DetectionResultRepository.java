@@ -15,4 +15,6 @@ public interface DetectionResultRepository extends JpaRepository<DetectionResult
     List<DetectionResult> findByCategoryAndAreaId(String category, Long areaId);
 
     long countByAreaIdAndStatus(Long areaId, String status);
+
+    boolean existsByAreaId(Long areaId);
 }
