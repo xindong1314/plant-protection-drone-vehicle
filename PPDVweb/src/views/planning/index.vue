@@ -278,10 +278,10 @@ onBeforeUnmount(() => {
   font-size: 12px;
   margin-left: auto;
 }
-.map-shell { min-height: 560px; flex: 1; padding: 10px; background: #0d110d; border: 1px solid #232a22; border-radius: var(--ag-radius); }
+.map-shell { min-height: 560px; flex: 1; padding: 10px; position: relative; background: #0d110d; border: 1px solid #232a22; border-radius: var(--ag-radius); }
 .map-panel {
-  height: 100%;
-  position: relative;
+  position: absolute;
+  inset: 10px;
   overflow: hidden;
   background: #171c17;
   border: 1px solid #303830;
