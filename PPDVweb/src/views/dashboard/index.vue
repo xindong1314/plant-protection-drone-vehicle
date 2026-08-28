@@ -88,7 +88,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, nextTick, onMounted, onUnmounted } from 'vue'
 import * as echarts from 'echarts'
 import { useTelemetryStore } from '@/stores/telemetry'
 import { listDevice } from '@/api/ppdv/device'
@@ -167,6 +167,8 @@ async function init() {
     // 1. 拉设备列表
     const deviceRes: any = await listDevice()
     store.initDevices(deviceRes.rows || [])
+    // 等待 v-if="store.totalCount > 0" 的图表容器真正挂载到 DOM 后再渲染
+    await nextTick()
     renderAllCharts()
   } catch {
     // request.js 拦截器已反馈设备接口错误
