@@ -106,6 +106,8 @@
 
 当前仅有 ROS2 规划目录和 README，没有可编译节点、launch 文件或硬件驱动，因此统一标记为规划中。
 
+已在 Atlas 200I DK A2 上手工跑通 ROS2 Humble、N10P 激光雷达 `/scan`、Astra Pro Plus 深度相机和基于静态 TF 的 `slam_toolbox` 建图，实测记录见 [PPDVedge/docs/hardware/](../PPDVedge/docs/hardware/README.md)。这些是环境与驱动验证，尚未形成仓库内的节点代码，模块状态保持不变。
+
 | 模块 | 目录 | 状态 | 规划职责 |
 |---|---|---:|---|
 | 环境感知 | `perception/` | ⬜ | 传感器融合、障碍物与作物行识别 |
