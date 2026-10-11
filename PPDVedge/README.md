@@ -15,4 +15,8 @@
 | [safety/](safety/) | 安全防护 | 急停、越界、避障、故障诊断（优先级最高） |
 | [comm/](comm/) | 通信上报 | 与云平台的遥测上报与指令接收 |
 
+## 硬件接入记录
+
+Atlas 200I DK A2 上的 ROS2 Humble 环境、N10P 激光雷达、Astra Pro Plus 深度相机和 SLAM 建图实测记录见 [docs/hardware/](docs/hardware/README.md)。
+
 详见 [../docs/architecture.md](../docs/architecture.md)。
