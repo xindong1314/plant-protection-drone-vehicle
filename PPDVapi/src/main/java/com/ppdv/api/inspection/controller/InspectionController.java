@@ -39,8 +39,10 @@ public class InspectionController extends BaseController {
 
     @PreAuthorize("@ss.hasPermi('ppdv:inspection:query')")
     @GetMapping("/list")
-    public TableDataInfo list(PageQuery pageQuery) {
-        Page<InspectionRecord> page = service.listRecords(pageQuery.toPageable());
+    public TableDataInfo list(@RequestParam(required = false) String keyword,
+                              @RequestParam(required = false) String status,
+                              PageQuery pageQuery) {
+        Page<InspectionRecord> page = service.listRecords(keyword, status, pageQuery.toPageable());
         return getDataTable(page);
     }
 

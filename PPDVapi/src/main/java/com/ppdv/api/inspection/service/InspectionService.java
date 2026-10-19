@@ -12,14 +12,17 @@ import com.ppdv.api.inspection.domain.InspectionRecord;
 import com.ppdv.api.inspection.repository.DetectionResultRepository;
 import com.ppdv.api.inspection.repository.InspectionImageRepository;
 import com.ppdv.api.inspection.repository.InspectionRecordRepository;
+import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -33,6 +36,7 @@ import java.util.stream.Collectors;
 public class InspectionService {
 
     private static final Set<String> DETECTION_STATUSES = Set.of("PENDING", "CONFIRMED", "IGNORED");
+    private static final Set<String> RECORD_STATUSES = Set.of("IN_PROGRESS", "COMPLETED");
     private static final Sort NEWEST_FIRST = Sort.by(Sort.Direction.DESC, "createTime")
             .and(Sort.by(Sort.Direction.DESC, "id"));
 
@@ -63,11 +67,35 @@ public class InspectionService {
     // ---- 巡检记录 ----
 
     @Transactional(readOnly = true)
-    public Page<InspectionRecord> listRecords(Pageable pageable) {
-        if (pageable.getSort().isUnsorted()) {
-            pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), NEWEST_FIRST);
+    public Page<InspectionRecord> listRecords(String keyword, String status, Pageable pageable) {
+        Pageable sortedPageable = pageable.getSort().isUnsorted()
+                ? PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), NEWEST_FIRST)
+                : pageable;
+        String normalizedStatus = status == null || status.isBlank() ? null : status.trim().toUpperCase();
+        if (normalizedStatus != null && !RECORD_STATUSES.contains(normalizedStatus)) {
+            throw new IllegalArgumentException("无效的巡检状态: " + status);
         }
-        return recordRepository.findAll(pageable);
+        String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
+        if (normalizedKeyword == null && normalizedStatus == null) {
+            return recordRepository.findAll(sortedPageable);
+        }
+        List<Long> areaIds = normalizedKeyword == null ? List.of() : areaService.findAreaIdsByKeyword(normalizedKeyword);
+        return recordRepository.findAll(buildRecordSpec(normalizedKeyword, normalizedStatus, areaIds), sortedPageable);
+    }
+
+    /** 组装查询条件：关键字匹配设备编号或区域编号/名称（解析为区域 ID），状态精确匹配。 */
+    private Specification<InspectionRecord> buildRecordSpec(String keyword, String status, List<Long> areaIds) {
+        return (root, query, cb) -> {
+            List<Predicate> ps = new ArrayList<>();
+            if (status != null) {
+                ps.add(cb.equal(root.get("status"), status));
+            }
+            if (keyword != null) {
+                Predicate deviceLike = cb.like(root.get("deviceId"), "%" + keyword + "%");
+                ps.add(areaIds.isEmpty() ? deviceLike : cb.or(deviceLike, root.get("areaId").in(areaIds)));
+            }
+            return cb.and(ps.toArray(new Predicate[0]));
+        };
     }
 
     @Transactional(readOnly = true)

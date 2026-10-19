@@ -14,15 +14,18 @@ import com.ppdv.api.task.domain.SprayTask;
 import com.ppdv.api.task.dto.ReviewTaskView;
 import com.ppdv.api.task.repository.ReviewRecordRepository;
 import com.ppdv.api.task.repository.SprayTaskRepository;
+import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -79,15 +82,37 @@ public class PlantProtectionService {
 
     @Transactional(readOnly = true)
     public Page<SprayTask> listSprayTasks(String status, Pageable pageable) {
+        return listSprayTasks(status, null, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<SprayTask> listSprayTasks(String status, String keyword, Pageable pageable) {
         Pageable sortedPageable = withDefaultSort(pageable);
-        if (status == null || status.isBlank()) {
-            return sprayRepository.findAll(sortedPageable);
-        }
-        String normalizedStatus = status.trim().toUpperCase();
-        if (!ALLOWED_TRANSITIONS.containsKey(normalizedStatus)) {
+        String normalizedStatus = status == null || status.isBlank() ? null : status.trim().toUpperCase();
+        if (normalizedStatus != null && !ALLOWED_TRANSITIONS.containsKey(normalizedStatus)) {
             throw new IllegalArgumentException("无效的任务状态: " + status);
         }
-        return sprayRepository.findByStatus(normalizedStatus, sortedPageable);
+        String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
+        if (normalizedStatus == null && normalizedKeyword == null) {
+            return sprayRepository.findAll(sortedPageable);
+        }
+        List<Long> areaIds = normalizedKeyword == null ? List.of() : areaService.findAreaIdsByKeyword(normalizedKeyword);
+        return sprayRepository.findAll(buildTaskSpec(normalizedStatus, normalizedKeyword, areaIds), sortedPageable);
+    }
+
+    /** 点喷任务查询条件：status 精确；关键字匹配执行设备编号或区域编号/名称（解析为区域 ID）。 */
+    private Specification<SprayTask> buildTaskSpec(String status, String keyword, List<Long> areaIds) {
+        return (root, query, cb) -> {
+            List<Predicate> ps = new ArrayList<>();
+            if (status != null) {
+                ps.add(cb.equal(root.get("status"), status));
+            }
+            if (keyword != null) {
+                Predicate deviceLike = cb.like(root.get("deviceId"), "%" + keyword + "%");
+                ps.add(areaIds.isEmpty() ? deviceLike : cb.or(deviceLike, root.get("areaId").in(areaIds)));
+            }
+            return cb.and(ps.toArray(new Predicate[0]));
+        };
     }
 
     @Transactional(readOnly = true)
@@ -282,27 +307,87 @@ public class PlantProtectionService {
     public Page<ReviewTaskView> listReviewTasks(Pageable pageable) {
         Pageable sortedPageable = withDefaultSort(pageable, LATEST_COMPLETED_FIRST);
         Page<SprayTask> taskPage = sprayRepository.findByStatus("COMPLETED", sortedPageable);
-        List<Long> taskIds = taskPage.getContent().stream().map(SprayTask::getId).toList();
+        Map<Long, ReviewRecord> latestByTask = latestReviewByTask(taskPage.getContent());
+        List<ReviewTaskView> rows = taskPage.getContent().stream()
+                .map(task -> toReviewView(task, latestByTask))
+                .toList();
+        return new PageImpl<>(rows, sortedPageable, taskPage.getTotalElements());
+    }
 
+    /**
+     * 带条件的复查列表：result 过滤的是"每个任务最新一条复查记录"的派生结论，无法单表下推，
+     * 带条件时查出候选已完成任务、内存计算最新结论并过滤后再分页。
+     */
+    @Transactional(readOnly = true)
+    public Page<ReviewTaskView> listReviewTasks(String result, String keyword, Pageable pageable) {
+        Pageable sortedPageable = withDefaultSort(pageable, LATEST_COMPLETED_FIRST);
+        String normalizedResult = result == null || result.isBlank() ? null : result.trim().toUpperCase();
+        if (normalizedResult != null && !REVIEW_RESULTS.contains(normalizedResult)) {
+            throw new IllegalArgumentException("无效的复查结果: " + result);
+        }
+        String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
+        if (normalizedResult == null && normalizedKeyword == null) {
+            return listReviewTasks(sortedPageable);
+        }
+        List<Long> areaIds = normalizedKeyword == null ? List.of() : areaService.findAreaIdsByKeyword(normalizedKeyword);
+        List<SprayTask> tasks = sprayRepository.findAll(reviewTaskSpec(normalizedKeyword, areaIds), sortedPageable.getSort());
+        Map<Long, ReviewRecord> latestByTask = latestReviewByTask(tasks);
+        List<ReviewTaskView> rows = tasks.stream()
+                .map(task -> toReviewView(task, latestByTask))
+                .filter(view -> normalizedResult == null || normalizedResult.equals(view.result()))
+                .toList();
+        int from = (int) Math.min(sortedPageable.getOffset(), rows.size());
+        int to = Math.min(from + sortedPageable.getPageSize(), rows.size());
+        return new PageImpl<>(rows.subList(from, to), sortedPageable, rows.size());
+    }
+
+    /** 复查候选任务条件：固定已完成状态；关键字按任务号（去掉 # 后纯数字精确匹配）或区域编号/名称匹配。 */
+    private Specification<SprayTask> reviewTaskSpec(String keyword, List<Long> areaIds) {
+        return (root, query, cb) -> {
+            List<Predicate> ps = new ArrayList<>();
+            ps.add(cb.equal(root.get("status"), "COMPLETED"));
+            if (keyword != null) {
+                List<Predicate> ks = new ArrayList<>();
+                Long taskId = parseTaskNumber(keyword);
+                if (taskId != null) {
+                    ks.add(cb.equal(root.get("id"), taskId));
+                }
+                if (!areaIds.isEmpty()) {
+                    ks.add(root.get("areaId").in(areaIds));
+                }
+                ps.add(ks.isEmpty() ? cb.disjunction() : cb.or(ks.toArray(new Predicate[0])));
+            }
+            return cb.and(ps.toArray(new Predicate[0]));
+        };
+    }
+
+    /** 复查关键字中的任务号：去掉前导 # 后为 1~18 位纯数字时按任务 ID 匹配，否则返回 null。 */
+    private Long parseTaskNumber(String keyword) {
+        String text = keyword.startsWith("#") ? keyword.substring(1) : keyword;
+        return text.matches("\\d{1,18}") ? Long.valueOf(text) : null;
+    }
+
+    private Map<Long, ReviewRecord> latestReviewByTask(List<SprayTask> tasks) {
+        List<Long> taskIds = tasks.stream().map(SprayTask::getId).toList();
         Map<Long, ReviewRecord> latestByTask = new LinkedHashMap<>();
         if (!taskIds.isEmpty()) {
             reviewRepository.findBySprayTaskIdInOrderByReviewTimeDescIdDesc(taskIds)
                     .forEach(review -> latestByTask.putIfAbsent(review.getSprayTaskId(), review));
         }
+        return latestByTask;
+    }
 
-        List<ReviewTaskView> rows = taskPage.getContent().stream().map(task -> {
-            ReviewRecord review = latestByTask.get(task.getId());
-            return new ReviewTaskView(
-                    task.getId(),
-                    task.getAreaId(),
-                    task.getCompletedAt(),
-                    review != null ? review.getReviewTime() : null,
-                    review != null && review.getResult() != null ? review.getResult() : "NEED_RETRY",
-                    review != null ? review.getBeforeImageId() : null,
-                    review != null ? review.getAfterImageId() : null
-            );
-        }).toList();
-        return new PageImpl<>(rows, sortedPageable, taskPage.getTotalElements());
+    private ReviewTaskView toReviewView(SprayTask task, Map<Long, ReviewRecord> latestByTask) {
+        ReviewRecord review = latestByTask.get(task.getId());
+        return new ReviewTaskView(
+                task.getId(),
+                task.getAreaId(),
+                task.getCompletedAt(),
+                review != null ? review.getReviewTime() : null,
+                review != null && review.getResult() != null ? review.getResult() : "NEED_RETRY",
+                review != null ? review.getBeforeImageId() : null,
+                review != null ? review.getAfterImageId() : null
+        );
     }
 
     private void validateReviewImage(Long imageId, SprayTask sprayTask, String label) {

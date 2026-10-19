@@ -10,6 +10,9 @@ import org.springframework.util.StringUtils;
  */
 public class PageQuery {
 
+    /** 单页最大条数，pageSize 超过该值时截断，防止一次拉取全表。 */
+    private static final int MAX_PAGE_SIZE = 500;
+
     private Integer pageNum;
     private Integer pageSize;
     private String orderByColumn;
@@ -18,9 +21,10 @@ public class PageQuery {
     /** 转为 Spring Data Pageable（pageNum 从 1 开始）。 */
     public Pageable toPageable() {
         int page = (pageNum == null || pageNum < 1) ? 1 : pageNum;
-        int size = (pageSize == null || pageSize < 1) ? 10 : pageSize;
+        int size = (pageSize == null || pageSize < 1) ? 10 : Math.min(pageSize, MAX_PAGE_SIZE);
         if (StringUtils.hasText(orderByColumn)) {
-            Sort.Direction dir = "desc".equalsIgnoreCase(isAsc) ? Sort.Direction.DESC : Sort.Direction.ASC;
+            // 兼容前端两种降序取值：'desc' 与 el-table sort-change 的 'descending'，其余（含 'asc'/'ascending'）按升序
+            Sort.Direction dir = ("desc".equalsIgnoreCase(isAsc) || "descending".equalsIgnoreCase(isAsc)) ? Sort.Direction.DESC : Sort.Direction.ASC;
             return PageRequest.of(page - 1, size, Sort.by(dir, orderByColumn));
         }
         return PageRequest.of(page - 1, size);

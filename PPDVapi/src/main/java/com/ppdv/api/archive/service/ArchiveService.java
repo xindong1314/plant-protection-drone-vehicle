@@ -61,7 +61,18 @@ public class ArchiveService {
     /** 数字地图聚合：返回所有区域 + 档案汇总。 */
     @Transactional(readOnly = true)
     public List<Map<String, Object>> getDigitalMap() {
-        List<GreenhouseArea> areas = areaRepository.findAllByOrderBySortOrderAsc();
+        return getDigitalMap(null, null);
+    }
+
+    /** 数字地图聚合（带过滤）：keyword 模糊匹配区域编号/名称/大棚，riskStatus 精确匹配当前风险。 */
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getDigitalMap(String keyword, String riskStatus) {
+        String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim().toLowerCase();
+        String normalizedRisk = riskStatus == null || riskStatus.isBlank() ? null : riskStatus.trim().toUpperCase();
+        List<GreenhouseArea> areas = areaRepository.findAllByOrderBySortOrderAsc().stream()
+                .filter(area -> normalizedRisk == null || normalizedRisk.equals(area.getRiskStatus()))
+                .filter(area -> normalizedKeyword == null || matchesAreaKeyword(area, normalizedKeyword))
+                .toList();
         List<Long> areaIds = areas.stream().map(GreenhouseArea::getId).toList();
         Map<Long, GreenhouseArchive> archivesByArea = areaIds.isEmpty()
                 ? Map.of()
@@ -88,6 +99,16 @@ public class ArchiveService {
             }
             return entry;
         }).toList();
+    }
+
+    private boolean matchesAreaKeyword(GreenhouseArea area, String lowerKeyword) {
+        return containsIgnoreCase(area.getAreaCode(), lowerKeyword)
+                || containsIgnoreCase(area.getAreaName(), lowerKeyword)
+                || containsIgnoreCase(area.getGreenhouseName(), lowerKeyword);
+    }
+
+    private boolean containsIgnoreCase(String text, String lowerKeyword) {
+        return text != null && text.toLowerCase().contains(lowerKeyword);
     }
 
     /** 更新区域档案（巡检/异常/点喷触发时调用）。 */
