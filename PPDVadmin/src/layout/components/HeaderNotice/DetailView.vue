@@ -42,7 +42,7 @@
         </div>
 
         <div class="notice-body">
-          <div v-if="hasContent" class="notice-content" v-html="detail.noticeContent" />
+          <div v-if="hasContent" class="notice-content" v-html="sanitizedContent" />
           <div v-else class="notice-empty notice-empty--inner">
             <el-icon><Document /></el-icon> 暂无内容
           </div>
@@ -53,6 +53,7 @@
 </template>
 
 <script setup>
+import DOMPurify from 'dompurify'
 import { getNotice } from '@/api/system/notice'
 
 const visible = ref(false)
@@ -68,6 +69,8 @@ const hasContent = computed(() => {
   const content = detail.value && detail.value.noticeContent
   return content != null && String(content).trim() !== ''
 })
+
+const sanitizedContent = computed(() => DOMPurify.sanitize(detail.value?.noticeContent || ''))
 
 function open(payload) {
   let id = null

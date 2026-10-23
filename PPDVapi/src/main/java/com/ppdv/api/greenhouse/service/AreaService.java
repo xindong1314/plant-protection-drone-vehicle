@@ -74,6 +74,15 @@ public class AreaService {
                 .orElseThrow(() -> new IllegalArgumentException("区域不存在: " + areaCode));
     }
 
+    /** 按关键字模糊匹配区域编号/名称，返回命中的区域 ID；关键字为空白时返回空列表。 */
+    @Transactional(readOnly = true)
+    public List<Long> findAreaIdsByKeyword(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return List.of();
+        }
+        return repository.findIdsByKeywordPattern("%" + keyword.trim() + "%");
+    }
+
     /** 在当前事务内锁定区域，供需要基于区域状态做“检查后写入”的业务使用。 */
     @Transactional
     public GreenhouseArea getForUpdate(Long id) {

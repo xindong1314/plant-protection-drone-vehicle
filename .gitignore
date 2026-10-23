@@ -14,6 +14,10 @@ build/
 target/
 *.egg-info/
 
+# Runtime uploads (backend /uploads/ 巡检图片等运行期产物)
+/uploads/
+PPDVapi/uploads/
+
 # Environment / secrets
 .env
 .env.local
@@ -26,3 +30,5 @@ target/
 # OS
 .DS_Store
 Thumbs.db
+.zcode
+PPDVapi/backend-run.log

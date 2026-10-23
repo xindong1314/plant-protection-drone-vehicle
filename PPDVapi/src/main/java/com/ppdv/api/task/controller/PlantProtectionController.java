@@ -37,8 +37,10 @@ public class PlantProtectionController extends BaseController {
 
     @PreAuthorize("@ss.hasPermi('ppdv:spray:query')")
     @GetMapping("/spray/list")
-    public TableDataInfo sprayList(@RequestParam(required = false) String status, PageQuery pageQuery) {
-        Page<SprayTask> page = service.listSprayTasks(status, pageQuery.toPageable());
+    public TableDataInfo sprayList(@RequestParam(required = false) String status,
+                                   @RequestParam(required = false) String keyword,
+                                   PageQuery pageQuery) {
+        Page<SprayTask> page = service.listSprayTasks(status, keyword, pageQuery.toPageable());
         return getDataTable(page);
     }
 
@@ -86,8 +88,10 @@ public class PlantProtectionController extends BaseController {
 
     @PreAuthorize("@ss.hasPermi('ppdv:spray:query')")
     @GetMapping("/review/list")
-    public TableDataInfo reviewList(PageQuery pageQuery) {
-        Page<ReviewTaskView> page = service.listReviewTasks(pageQuery.toPageable());
+    public TableDataInfo reviewList(@RequestParam(required = false) String result,
+                                    @RequestParam(required = false) String keyword,
+                                    PageQuery pageQuery) {
+        Page<ReviewTaskView> page = service.listReviewTasks(result, keyword, pageQuery.toPageable());
         return getDataTable(page);
     }
 

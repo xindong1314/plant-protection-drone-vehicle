@@ -3,6 +3,7 @@ package com.ppdv.api.common;
 import com.ppdv.api.common.exception.ServiceException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.mapping.PropertyReferenceException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -40,6 +41,12 @@ public class GlobalExceptionHandler {
                 .map(e -> e.getField() + ": " + e.getDefaultMessage())
                 .orElse("参数校验失败");
         return AjaxResult.error(400, msg);
+    }
+
+    @ExceptionHandler(PropertyReferenceException.class)
+    public AjaxResult handlePropertyReference(PropertyReferenceException ex) {
+        // 非法排序字段（PageQuery.toPageable 传入不存在的属性）时 Spring Data 抛出，按 400 返回
+        return AjaxResult.error(400, "排序字段无效：" + ex.getPropertyName());
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

@@ -21,6 +21,10 @@ public interface AreaRepository extends JpaRepository<GreenhouseArea, Long>, Jpa
 
     List<GreenhouseArea> findAllByOrderBySortOrderAsc();
 
+    /** 按关键字模糊匹配区域编号/名称，返回命中的区域 ID，供巡检、点喷等列表按区域条件过滤。 */
+    @Query("select a.id from GreenhouseArea a where a.areaCode like :pattern or a.areaName like :pattern")
+    List<Long> findIdsByKeywordPattern(@Param("pattern") String pattern);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select a from GreenhouseArea a where a.id = :id")
     Optional<GreenhouseArea> findByIdForUpdate(@Param("id") Long id);

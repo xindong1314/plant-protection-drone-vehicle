@@ -1,5 +1,6 @@
 package com.ppdv.api.system.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.MappedSuperclass;
 import jakarta.persistence.PrePersist;
@@ -81,5 +82,19 @@ public abstract class BaseEntity implements Serializable {
 
     public void setRemark(String remark) {
         this.remark = remark;
+    }
+
+    /** 若依前端 addDateRange 透传的查询参数（params[beginTime] / params[endTime]），不映射数据库。 */
+    @jakarta.persistence.Transient
+    private java.util.Map<String, Object> params = new java.util.HashMap<>();
+
+    /** 仅承接前端 addDateRange 的查询参数绑定，不参与数据库映射，也不序列化进 JSON（避免改变既有接口输出）。 */
+    @JsonIgnore
+    public java.util.Map<String, Object> getParams() {
+        return params;
+    }
+
+    public void setParams(java.util.Map<String, Object> params) {
+        this.params = params;
     }
 }
