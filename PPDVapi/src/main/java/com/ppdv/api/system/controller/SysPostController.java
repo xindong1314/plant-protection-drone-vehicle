@@ -38,11 +38,6 @@ public class SysPostController extends BaseController {
         return AjaxResult.success(postService.selectPostById(postId));
     }
 
-    @GetMapping("/optionselect")
-    public AjaxResult optionselect() {
-        return AjaxResult.success(postService.selectPostAll());
-    }
-
     @PreAuthorize("@ss.hasPermi('system:post:add')")
     @PostMapping
     public AjaxResult add(@RequestBody SysPost post) {

@@ -20,8 +20,6 @@ public interface SprayTaskRepository extends JpaRepository<SprayTask, Long>, Jpa
 
     List<SprayTask> findByAreaIdOrderByCreateTimeDesc(Long areaId);
 
-    List<SprayTask> findByStatusOrderByCreateTimeAsc(String status);
-
     Page<SprayTask> findByStatus(String status, Pageable pageable);
 
     Optional<SprayTask> findFirstByAreaIdAndStatusOrderByCompletedAtDesc(Long areaId, String status);

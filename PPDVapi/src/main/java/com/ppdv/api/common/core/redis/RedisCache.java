@@ -26,6 +26,11 @@ public class RedisCache {
         redisTemplate.opsForValue().set(key, value, timeout, unit);
     }
 
+    /** SETNX：键不存在时写入并设置过期时间，返回是否写入成功（跟踪消息 msgId 去重用）。 */
+    public <T> boolean setIfAbsent(String key, T value, long timeout, TimeUnit unit) {
+        return Boolean.TRUE.equals(redisTemplate.opsForValue().setIfAbsent(key, value, timeout, unit));
+    }
+
     public boolean expire(String key, long timeout, TimeUnit unit) {
         return Boolean.TRUE.equals(redisTemplate.expire(key, timeout, unit));
     }

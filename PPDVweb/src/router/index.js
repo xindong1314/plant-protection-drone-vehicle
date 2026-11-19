@@ -9,6 +9,7 @@ export const pageRoutes = [
   { path: 'area', name: 'area', component: () => import('@/views/area/index.vue'), meta: { title: '区域管理', permissions: ['ppdv:area:list'] } },
   { path: 'archive', name: 'archive', component: () => import('@/views/archive/index.vue'), meta: { title: '区域档案', permissions: ['ppdv:archive:query'] } },
   { path: 'inspection', name: 'inspection', component: () => import('@/views/inspection/index.vue'), meta: { title: '巡检管理', permissions: ['ppdv:inspection:query'] } },
+  { path: 'track', name: 'track', component: () => import('@/views/track/index.vue'), meta: { title: '跟踪记录', permissions: ['ppdv:track:query'] } },
   { path: 'spray', name: 'spray', component: () => import('@/views/spray/index.vue'), meta: { title: '点喷任务', permissions: ['ppdv:spray:query'] } },
   { path: 'review', name: 'review', component: () => import('@/views/review/index.vue'), meta: { title: '喷后复查', permissions: ['ppdv:spray:query'] } },
   { path: 'risk', name: 'risk', component: () => import('@/views/risk/index.vue'), meta: { title: '风险规则', permissions: ['ppdv:risk:config:query'] } },

@@ -50,12 +50,6 @@ public class PlantProtectionController extends BaseController {
         return AjaxResult.success(service.getSprayTask(id));
     }
 
-    @PreAuthorize("@ss.hasPermi('ppdv:spray:query')")
-    @GetMapping("/spray/pending")
-    public AjaxResult pendingSprayTasks() {
-        return AjaxResult.success(service.getPendingSprayTasks());
-    }
-
     @PreAuthorize("@ss.hasPermi('ppdv:spray:add')")
     @PostMapping("/spray")
     public AjaxResult createSprayTask(@RequestBody SprayTask task) {
@@ -101,17 +95,5 @@ public class PlantProtectionController extends BaseController {
         review.setSprayTaskId(sprayTaskId);
         review.setCreateBy(username());
         return AjaxResult.success(service.createReview(review));
-    }
-
-    @PreAuthorize("@ss.hasPermi('ppdv:spray:query')")
-    @GetMapping("/review/spray/{sprayTaskId}")
-    public AjaxResult getReviewsBySprayTask(@PathVariable Long sprayTaskId) {
-        return AjaxResult.success(service.getReviewsBySprayTask(sprayTaskId));
-    }
-
-    @PreAuthorize("@ss.hasPermi('ppdv:spray:query')")
-    @GetMapping("/review/area/{areaId}")
-    public AjaxResult getReviewsByArea(@PathVariable Long areaId) {
-        return AjaxResult.success(service.getReviewsByArea(areaId));
     }
 }

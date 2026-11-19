@@ -2,7 +2,7 @@ package com.ppdv.api.archive.service;
 
 import com.ppdv.api.archive.domain.GreenhouseArchive;
 import com.ppdv.api.archive.repository.ArchiveRepository;
-import com.ppdv.api.greenhouse.domain.GreenhouseArea;
+import com.ppdv.api.greenhouse.dto.AreaDigest;
 import com.ppdv.api.greenhouse.repository.AreaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,8 +36,8 @@ class ArchiveServiceTest {
 
     @Test
     void digitalMapLoadsArchivesInOneBatchAndIncludesLatestTimes() {
-        GreenhouseArea first = area(1L, "A1");
-        GreenhouseArea second = area(2L, "A2");
+        AreaDigest first = digest(1L, "A1");
+        AreaDigest second = digest(2L, "A2");
         GreenhouseArchive archive = new GreenhouseArchive();
         archive.setAreaId(1L);
         archive.setTotalInspections(3);
@@ -47,12 +47,13 @@ class ArchiveServiceTest {
         LocalDateTime sprayTime = LocalDateTime.of(2026, 8, 21, 11, 0);
         archive.setLastAnomalyTime(anomalyTime);
         archive.setLastSprayTime(sprayTime);
-        when(areaRepository.findAllByOrderBySortOrderAsc()).thenReturn(List.of(first, second));
+        when(areaRepository.findAllDigests()).thenReturn(List.of(first, second));
         when(archiveRepository.findByAreaIdIn(List.of(1L, 2L))).thenReturn(List.of(archive));
 
         List<Map<String, Object>> rows = service.getDigitalMap();
 
         assertEquals(2, rows.size());
+        assertEquals("A1", rows.get(0).get("areaCode"));
         assertEquals(3, rows.get(0).get("totalInspections"));
         assertEquals(anomalyTime, rows.get(0).get("lastAnomalyTime"));
         assertEquals(sprayTime, rows.get(0).get("lastSprayTime"));
@@ -62,7 +63,7 @@ class ArchiveServiceTest {
 
     @Test
     void digitalMapSkipsArchiveQueryWhenThereAreNoAreas() {
-        when(areaRepository.findAllByOrderBySortOrderAsc()).thenReturn(List.of());
+        when(areaRepository.findAllDigests()).thenReturn(List.of());
 
         assertEquals(List.of(), service.getDigitalMap());
 
@@ -84,12 +85,7 @@ class ArchiveServiceTest {
         verify(archiveRepository, times(2)).findByAreaIdForUpdate(1L);
     }
 
-    private GreenhouseArea area(Long id, String code) {
-        GreenhouseArea area = new GreenhouseArea();
-        area.setId(id);
-        area.setAreaCode(code);
-        area.setAreaName(code + " 区");
-        area.setRiskStatus("NORMAL");
-        return area;
+    private AreaDigest digest(Long id, String code) {
+        return new AreaDigest(id, code, code + " 区", "一号棚", null, "NORMAL");
     }
 }

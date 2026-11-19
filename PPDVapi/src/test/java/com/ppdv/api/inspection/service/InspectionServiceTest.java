@@ -71,6 +71,7 @@ class InspectionServiceTest {
         when(imageRepository.findAllById(any())).thenReturn(List.of(image));
         when(detectionRepository.saveAllAndFlush(List.of(detection))).thenReturn(List.of(detection));
         when(recordRepository.findByIdForUpdate(4L)).thenReturn(Optional.of(record));
+        when(areaService.existsById(5L)).thenReturn(true);
 
         List<DetectionResult> saved = service.addDetections(List.of(detection));
 
@@ -165,6 +166,31 @@ class InspectionServiceTest {
     }
 
     @Test
+    void addDetectionsOnDeletedAreaSkipsRiskEvaluationButPersistsDetections() {
+        // v1.1 评审 S5：区域已被 V11 删除时，识别结果照常落库，仅跳过风险/档案联动。
+        DetectionResult detection = detection(3L, null, 0.8, "PENDING");
+        InspectionImage image = new InspectionImage();
+        image.setId(3L);
+        image.setInspectionId(4L);
+        image.setAreaId(5L);
+        InspectionRecord record = new InspectionRecord();
+        record.setId(4L);
+        record.setAreaId(5L);
+        record.setAnomalyCount(0);
+
+        when(imageRepository.findAllById(any())).thenReturn(List.of(image));
+        when(detectionRepository.saveAllAndFlush(List.of(detection))).thenReturn(List.of(detection));
+        when(recordRepository.findByIdForUpdate(4L)).thenReturn(Optional.of(record));
+        when(areaService.existsById(5L)).thenReturn(false);
+
+        List<DetectionResult> saved = service.addDetections(List.of(detection));
+
+        assertEquals(5L, saved.get(0).getAreaId());
+        verify(riskEvaluationService, never()).evaluate(5L);
+        verify(archiveService, never()).touchAnomaly(5L, 1);
+    }
+
+    @Test
     void repeatedCompleteInspectionTouchesArchiveOnlyOnce() {
         InspectionRecord record = new InspectionRecord();
         record.setId(4L);
@@ -172,6 +198,7 @@ class InspectionServiceTest {
         record.setStatus("IN_PROGRESS");
         when(recordRepository.findByIdForUpdate(4L)).thenReturn(Optional.of(record));
         when(recordRepository.save(record)).thenReturn(record);
+        when(areaService.existsById(5L)).thenReturn(true);
 
         service.completeInspection(4L);
         service.completeInspection(4L);
@@ -180,6 +207,23 @@ class InspectionServiceTest {
         verify(recordRepository, times(2)).findByIdForUpdate(4L);
         verify(recordRepository, times(1)).save(record);
         verify(archiveService, times(1)).touchInspection(5L);
+    }
+
+    @Test
+    void completeInspectionOnDeletedAreaSkipsArchiveTouch() {
+        // v1.1 评审 S5：不为已删除区域“复活”档案。
+        InspectionRecord record = new InspectionRecord();
+        record.setId(4L);
+        record.setAreaId(5L);
+        record.setStatus("IN_PROGRESS");
+        when(recordRepository.findByIdForUpdate(4L)).thenReturn(Optional.of(record));
+        when(recordRepository.save(record)).thenReturn(record);
+        when(areaService.existsById(5L)).thenReturn(false);
+
+        service.completeInspection(4L);
+
+        assertEquals("COMPLETED", record.getStatus());
+        verify(archiveService, never()).touchInspection(5L);
     }
 
     private DetectionResult detection(Long imageId, Long areaId, Double confidence, String status) {

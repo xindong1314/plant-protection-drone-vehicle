@@ -52,6 +52,21 @@ ppdv:
     username: ppdv-backend
     password: ppdv-backend-secret
     client-id-prefix: ppdv-api
+  # 车端目标跟踪数据上云（MQTT tele/track）。默认关闭：不订阅、不落库、不推送。
+  track:
+    enabled: false
+    device-whitelist: []       # 空=不限制；灰度时填设备编号
+    max-tracks: 50             # 单条消息 tracks 上限，超限整条丢弃
+    max-trajectory-points: 20  # 轨迹点数上限，超出截断
+    msg-dedup-ttl-hours: 24    # msgId 去重 TTL；≤0 关闭去重
+    shadow-window-days: 7      # 影子分统计窗口（天），<0 自动钳到 0
+    shadow-max-rows: 2000      # 影子分单次行数上限（1–10000，越界自动钳制），超出记 SHADOW_TRUNCATED
+    shadow-in-evaluate: false  # true 时 evaluate 结果追加 trackScore/trackContributions/trackEvidenceStatus，不改变总分
+    debounce-ms: 3000          # 同区域影子分去抖窗口（尾沿必触发）
+    shadow-max-delay-ms: 30000 # 同区域持续有消息时的最大等待：每满该时长强制刷新一次；≤0 不设上限
+    require-episode: false     # episodeId 缺失时兜底 trackId@firstSeenTs；车端升级后置 true
+    session-idle-minutes: 15   # 车端未发 sessionEnd 时，会话空闲自动结束分钟数
+    episode-aggregation: NOISY_OR  # 同类跨 episode 证据聚合：NOISY_OR（推荐，有界）/ SUM（封顶 80）
   # 遥测时序库（TDengine，REST 连接，免原生客户端）。
   tdengine:
     enabled: true

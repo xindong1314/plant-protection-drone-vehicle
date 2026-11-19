@@ -13,6 +13,8 @@ import com.ppdv.api.inspection.repository.DetectionResultRepository;
 import com.ppdv.api.inspection.repository.InspectionImageRepository;
 import com.ppdv.api.inspection.repository.InspectionRecordRepository;
 import jakarta.persistence.criteria.Predicate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -34,6 +36,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class InspectionService {
+
+    private static final Logger log = LoggerFactory.getLogger(InspectionService.class);
 
     private static final Set<String> DETECTION_STATUSES = Set.of("PENDING", "CONFIRMED", "IGNORED");
     private static final Set<String> RECORD_STATUSES = Set.of("IN_PROGRESS", "COMPLETED");
@@ -141,7 +145,13 @@ public class InspectionService {
         record.setStatus("COMPLETED");
         InspectionRecord saved = recordRepository.save(record);
         if (record.getAreaId() != null) {
-            archiveService.touchInspection(record.getAreaId());
+            // v1.1 评审 S5：V11 删除的种子区域允许有历史巡检记录，区域已不存在时跳过档案联动，
+            // 不为已删除区域“复活”档案。
+            if (areaService.existsById(record.getAreaId())) {
+                archiveService.touchInspection(record.getAreaId());
+            } else {
+                log.warn("巡检关联区域已不存在，跳过档案联动: areaId={}", record.getAreaId());
+            }
         }
         return saved;
     }
@@ -230,8 +240,14 @@ public class InspectionService {
             recordRepository.save(record);
             Long areaId = record.getAreaId() != null ? record.getAreaId() : areaByInspection.get(inspectionId);
             if (areaId != null) {
-                riskEvalService.evaluate(areaId);
-                archiveService.touchAnomaly(areaId, anomalyCount);
+                // v1.1 评审 S5：区域已删除（如 V11 清理的种子区域）时跳过风险评估与档案联动，
+                // 识别结果本身照常落库，不因历史区域缺失整批回滚。
+                if (!areaService.existsById(areaId)) {
+                    log.warn("识别结果关联区域已不存在，跳过风险评估与档案联动: areaId={}", areaId);
+                } else {
+                    riskEvalService.evaluate(areaId);
+                    archiveService.touchAnomaly(areaId, anomalyCount);
+                }
             }
         }
         return saved;
@@ -240,11 +256,6 @@ public class InspectionService {
     @Transactional(readOnly = true)
     public List<DetectionResult> getDetectionsByImage(Long imageId) {
         return detectionRepository.findByImageIdOrderByIdAsc(imageId);
-    }
-
-    @Transactional(readOnly = true)
-    public List<DetectionResult> getDetectionsByArea(Long areaId) {
-        return detectionRepository.findByAreaIdOrderByIdDesc(areaId);
     }
 
     private boolean isAnomalyCategory(String category) {

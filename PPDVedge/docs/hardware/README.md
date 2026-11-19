@@ -2,7 +2,7 @@
 
 记录在 Atlas 200I DK A2 开发板上搭建 ROS2 环境、接入激光雷达和深度相机、跑通 2D SLAM 建图的实机过程。内容为 2026 年 4–5 月的实测记录，是 `perception/`、`navigation/` 后续开发的硬件基线。
 
-> 这些是手工验证记录，不是可编译的节点或 launch 文件；PPDVedge 的实现状态以 [模块台账](../../../docs/modules.md) 为准。
+> 这些是手工验证记录，不是可编译的节点或 launch 文件；PPDVedge 的实现状态见 [PPDVedge/README.md](../../README.md)。
 
 ## 硬件与环境
 

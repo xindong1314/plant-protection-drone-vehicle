@@ -29,12 +29,6 @@ public class RiskConfigController extends BaseController {
         return AjaxResult.success(service.listGrouped());
     }
 
-    @PreAuthorize("@ss.hasPermi('ppdv:risk:config:query')")
-    @GetMapping("/{id}")
-    public AjaxResult getInfo(@PathVariable Long id) {
-        return AjaxResult.success(service.get(id));
-    }
-
     @PreAuthorize("@ss.hasPermi('ppdv:risk:config:edit')")
     @PutMapping("/{id}")
     public AjaxResult edit(@PathVariable Long id, @RequestBody Map<String, String> body) {

@@ -42,14 +42,6 @@ public class SysDeptController extends BaseController {
         return AjaxResult.success(deptService.selectDeptById(deptId));
     }
 
-    @GetMapping("/roleDeptTreeselect/{roleId}")
-    public AjaxResult roleDeptTreeselect(@PathVariable Long roleId) {
-        AjaxResult ajax = AjaxResult.success();
-        ajax.put("checkedKeys", deptService.selectDeptIdsByRoleId(roleId));
-        ajax.put("depts", deptService.buildDeptTreeSelect(deptService.selectDeptList(new SysDept())));
-        return ajax;
-    }
-
     @PreAuthorize("@ss.hasPermi('system:dept:add')")
     @PostMapping
     public AjaxResult add(@RequestBody SysDept dept) {
