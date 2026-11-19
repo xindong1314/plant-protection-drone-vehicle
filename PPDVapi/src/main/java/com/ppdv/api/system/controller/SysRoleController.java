@@ -4,8 +4,10 @@ import com.ppdv.api.common.AjaxResult;
 import com.ppdv.api.common.page.PageQuery;
 import com.ppdv.api.common.page.TableDataInfo;
 import com.ppdv.api.common.web.BaseController;
+import com.ppdv.api.system.domain.SysDept;
 import com.ppdv.api.system.domain.SysRole;
 import com.ppdv.api.system.domain.SysUser;
+import com.ppdv.api.system.service.SysDeptService;
 import com.ppdv.api.system.service.SysRoleService;
 import com.ppdv.api.system.service.SysUserService;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -26,10 +28,12 @@ public class SysRoleController extends BaseController {
 
     private final SysRoleService roleService;
     private final SysUserService userService;
+    private final SysDeptService deptService;
 
-    public SysRoleController(SysRoleService roleService, SysUserService userService) {
+    public SysRoleController(SysRoleService roleService, SysUserService userService, SysDeptService deptService) {
         this.roleService = roleService;
         this.userService = userService;
+        this.deptService = deptService;
     }
 
     @PreAuthorize("@ss.hasPermi('system:role:list')")
@@ -87,12 +91,6 @@ public class SysRoleController extends BaseController {
         return AjaxResult.success();
     }
 
-    @PreAuthorize("@ss.hasPermi('system:role:query')")
-    @GetMapping("/optionselect")
-    public AjaxResult optionselect() {
-        return AjaxResult.success(roleService.selectRoleAll());
-    }
-
     @PreAuthorize("@ss.hasPermi('system:role:list')")
     @GetMapping("/authUser/allocatedList")
     public TableDataInfo allocatedList(Long roleId) {
@@ -129,6 +127,9 @@ public class SysRoleController extends BaseController {
     @PreAuthorize("@ss.hasPermi('system:role:query')")
     @GetMapping("/deptTree/{roleId}")
     public AjaxResult deptTree(@PathVariable Long roleId) {
-        return AjaxResult.success(); // 由 SysDeptController.roleDeptTreeselect 提供
+        AjaxResult ajax = AjaxResult.success();
+        ajax.put("checkedKeys", deptService.selectDeptIdsByRoleId(roleId));
+        ajax.put("depts", deptService.buildDeptTreeSelect(deptService.selectDeptList(new SysDept())));
+        return ajax;
     }
 }

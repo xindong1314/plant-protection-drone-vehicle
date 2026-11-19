@@ -15,6 +15,8 @@ import com.ppdv.api.task.dto.ReviewTaskView;
 import com.ppdv.api.task.repository.ReviewRecordRepository;
 import com.ppdv.api.task.repository.SprayTaskRepository;
 import jakarta.persistence.criteria.Predicate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.PageImpl;
@@ -34,6 +36,8 @@ import java.util.Set;
 
 @Service
 public class PlantProtectionService {
+
+    private static final Logger log = LoggerFactory.getLogger(PlantProtectionService.class);
 
     private static final Map<String, Set<String>> ALLOWED_TRANSITIONS = Map.of(
             "PENDING", Set.of("ASSIGNED", "FAILED"),
@@ -121,11 +125,6 @@ public class PlantProtectionService {
                 .orElseThrow(() -> new IllegalArgumentException("点喷任务不存在: " + id));
     }
 
-    @Transactional(readOnly = true)
-    public List<SprayTask> getPendingSprayTasks() {
-        return sprayRepository.findByStatusOrderByCreateTimeAsc("PENDING");
-    }
-
     @Transactional
     public SprayTask createSprayTask(SprayTask task) {
         if (task.getAreaId() == null) {
@@ -189,14 +188,28 @@ public class PlantProtectionService {
             review.setResult("NEED_RETRY");
             review.setReviewTime(LocalDateTime.now());
             reviewRepository.save(review);
-            archiveService.touchSpray(task.getAreaId());
-            areaService.updateRiskStatus(task.getAreaId(), "SPRAYED_PENDING_REVIEW");
+            updateAreaLinkage(task.getAreaId(), "SPRAYED_PENDING_REVIEW", true);
         }
         // 联动：点喷失败 → 区域恢复高风险
         if ("FAILED".equals(status) && task.getAreaId() != null) {
-            areaService.updateRiskStatus(task.getAreaId(), "HIGH_RISK");
+            updateAreaLinkage(task.getAreaId(), "HIGH_RISK", false);
         }
         return saved;
+    }
+
+    /**
+     * 点喷收尾时的区域档案/风险状态联动（v1.1 评审 S5）：
+     * 区域已删除（如 V11 清理的种子区域）时跳过联动并告警，历史任务照常收尾不返回 400。
+     */
+    private void updateAreaLinkage(Long areaId, String riskStatus, boolean touchSpray) {
+        if (!areaService.existsById(areaId)) {
+            log.warn("点喷任务关联区域已不存在，跳过档案与风险状态联动: areaId={}, status={}", areaId, riskStatus);
+            return;
+        }
+        if (touchSpray) {
+            archiveService.touchSpray(areaId);
+        }
+        areaService.updateRiskStatus(areaId, riskStatus);
     }
 
     /** 校验任务、区域和设备后下发点喷指令，areaCode 始终从任务关联区域读取。 */
@@ -270,31 +283,25 @@ public class PlantProtectionService {
             throw new IllegalArgumentException("无效的复查结果: " + review.getResult());
         }
         ReviewRecord saved = reviewRepository.save(review);
-        // 联动：复查结果驱动状态流转
+        // 联动：复查结果驱动状态流转（v1.1 评审 S5：区域已删除时跳过联动，复查照常落库）
         if (saved.getAreaId() != null) {
-            switch (saved.getResult()) {
-                case "PASSED" -> {
-                    areaService.updateRiskStatus(saved.getAreaId(), "NORMAL");
-                }
-                case "FAILED" -> {
-                    areaService.updateRiskStatus(saved.getAreaId(), "HIGH_RISK");
-                }
-                case "NEED_RETRY" -> {
-                    areaService.updateRiskStatus(saved.getAreaId(), "SPRAYED_PENDING_REVIEW");
+            if (!areaService.existsById(saved.getAreaId())) {
+                log.warn("复查关联区域已不存在，跳过风险状态联动: areaId={}", saved.getAreaId());
+            } else {
+                switch (saved.getResult()) {
+                    case "PASSED" -> {
+                        areaService.updateRiskStatus(saved.getAreaId(), "NORMAL");
+                    }
+                    case "FAILED" -> {
+                        areaService.updateRiskStatus(saved.getAreaId(), "HIGH_RISK");
+                    }
+                    case "NEED_RETRY" -> {
+                        areaService.updateRiskStatus(saved.getAreaId(), "SPRAYED_PENDING_REVIEW");
+                    }
                 }
             }
         }
         return saved;
-    }
-
-    @Transactional(readOnly = true)
-    public List<ReviewRecord> getReviewsBySprayTask(Long sprayTaskId) {
-        return reviewRepository.findBySprayTaskIdOrderByReviewTimeDesc(sprayTaskId);
-    }
-
-    @Transactional(readOnly = true)
-    public List<ReviewRecord> getReviewsByArea(Long areaId) {
-        return reviewRepository.findByAreaIdOrderByReviewTimeDesc(areaId);
     }
 
     private SprayTask getSprayTaskForUpdate(Long id) {

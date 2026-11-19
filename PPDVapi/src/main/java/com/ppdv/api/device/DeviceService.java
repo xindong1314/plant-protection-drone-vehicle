@@ -48,6 +48,17 @@ public class DeviceService {
         }
     }
 
+    /** 按数据库主键查询设备编号（v1.1 评审 S4：删除设备前用于联动取消路线录制会话）。 */
+    @Transactional(readOnly = true)
+    public List<String> findDeviceIdsByIds(Long[] ids) {
+        if (ids == null || ids.length == 0) {
+            return List.of();
+        }
+        return repository.findAllById(java.util.Arrays.asList(ids)).stream()
+                .map(Device::getDeviceId)
+                .toList();
+    }
+
     /** 重置设备密钥（一机一密轮换）。 */
     @Transactional
     public String resetSecret(String deviceId) {

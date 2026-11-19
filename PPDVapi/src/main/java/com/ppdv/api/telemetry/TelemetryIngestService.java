@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.ppdv.api.device.DeviceService;
+import com.ppdv.api.greenhouse.service.RouteRecordingService;
 import com.ppdv.api.protocol.Topics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,14 +28,17 @@ public class TelemetryIngestService {
     private final ObjectMapper objectMapper;
     private final ObjectProvider<TelemetryTsService> tsServiceProvider;
     private final ObjectProvider<TelemetryWebSocketHandler> wsHandlerProvider;
+    private final RouteRecordingService routeRecordingService;
 
     public TelemetryIngestService(DeviceService deviceService, ObjectMapper objectMapper,
                                   ObjectProvider<TelemetryTsService> tsServiceProvider,
-                                  ObjectProvider<TelemetryWebSocketHandler> wsHandlerProvider) {
+                                  ObjectProvider<TelemetryWebSocketHandler> wsHandlerProvider,
+                                  RouteRecordingService routeRecordingService) {
         this.deviceService = deviceService;
         this.objectMapper = objectMapper;
         this.tsServiceProvider = tsServiceProvider;
         this.wsHandlerProvider = wsHandlerProvider;
+        this.routeRecordingService = routeRecordingService;
     }
 
     public void onMessage(String topic, String payload) {
@@ -91,15 +95,23 @@ public class TelemetryIngestService {
     }
 
     private void handleState(String deviceId, long ts, JsonNode data) {
-        Double lat = data.hasNonNull("lat") ? data.get("lat").asDouble() : null;
-        Double lon = data.hasNonNull("lon") ? data.get("lon").asDouble() : null;
+        // v1.1 评审 M4：非数值经纬度按缺失处理，避免回落 (0,0) 进路线与设备快照。
+        Double lat = numberOf(data, "lat");
+        Double lon = numberOf(data, "lon");
         Integer battery = data.hasNonNull("battery") ? data.get("battery").asInt() : null;
         String mode = data.hasNonNull("mode") ? data.get("mode").asText() : null;
         deviceService.updateState(deviceId, lat, lon, battery, mode);
+        routeRecordingService.append(deviceId, lat, lon, ts);
         TelemetryTsService ts_ = tsServiceProvider.getIfAvailable();
         if (ts_ != null) {
             ts_.writeState(deviceId, ts, data);
         }
+    }
+
+    /** 仅在字段存在且为数值节点时取 double，否则返回 null。 */
+    private static Double numberOf(JsonNode data, String field) {
+        JsonNode node = data.get(field);
+        return node != null && node.isNumber() ? node.asDouble() : null;
     }
 
     private void handleWork(String deviceId, long ts, JsonNode data) {

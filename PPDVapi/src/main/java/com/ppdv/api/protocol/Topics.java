@@ -20,6 +20,7 @@ public final class Topics {
     public static final String SUB_ENV = PREFIX + "+/tele/env";
     public static final String SUB_ZONE = PREFIX + "+/tele/zone";
     public static final String SUB_ACK = PREFIX + "+/cmd/ack";
+    public static final String SUB_TRACK = PREFIX + "+/tele/track";
 
     // 下行发布
     public static String cmdReq(String deviceId) {

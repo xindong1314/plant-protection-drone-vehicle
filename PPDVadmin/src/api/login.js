@@ -19,32 +19,11 @@ export function login(username, password, code, uuid) {
   })
 }
 
-// 注册方法
-export function register(data) {
-  return request({
-    url: '/register',
-    headers: {
-      isToken: false
-    },
-    method: 'post',
-    data: data
-  })
-}
-
 // 获取用户详细信息
 export function getInfo() {
   return request({
     url: '/getInfo',
     method: 'get'
-  })
-}
-
-// 解锁屏幕
-export function unlockScreen(password) {
-  return request({
-    url: '/unlockscreen',
-    method: 'post',
-    data: { password }
   })
 }
 

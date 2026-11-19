@@ -47,7 +47,7 @@ import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import * as echarts from 'echarts'
 import { ElMessage } from 'element-plus'
 import { listDevice, stateHistory, sendCommand } from '@/api/device'
-import { loadAMap } from '@/utils/amap'
+import { loadTianditu } from '@/utils/tianditu'
 import { connectTelemetry } from '@/utils/ws'
 import { useUserStore } from '@/store/user'
 
@@ -62,11 +62,15 @@ const userStore = useUserStore()
 const canCommand = computed(() => userStore.hasPermission('ppdv:device:command'))
 
 let gauge = null
-let AMapRef = null
+let TRef = null
 let map = null
 let polyline = null
 let track = []
+let pendingFit = false
+let selectSeq = 0
 let wsConn = null
+// 实时轨迹点数上限，防止长时直播无限累积拖慢重绘
+const MAX_TRACK_POINTS = 500
 
 const fmt = (v, n = 1) => (v == null ? '-' : Number(v).toFixed(n))
 
@@ -76,11 +80,14 @@ async function init() {
   gauge = echarts.init(gaugeEl.value)
   renderGauge()
   try {
-    AMapRef = await loadAMap()
-    map = new AMapRef.Map(mapEl.value, { zoom: 15, center: [120.65, 30.12], mapStyle: 'amap://styles/darkblue' })
+    TRef = await loadTianditu()
+    map = new TRef.Map(mapEl.value)
+    map.centerAndZoom(new TRef.LngLat(120.65, 30.12), 15)
+    if (window.TMAP_SATELLITE_MAP) map.setMapType(window.TMAP_SATELLITE_MAP)
   } catch (e) {
     mapError.value = e.message + '（填好 Key 后地图即显示）'
   }
+  if (track.length) drawTrack(true)
   wsConn = connectTelemetry(onEvent)
 }
 
@@ -105,10 +112,14 @@ function renderGauge() {
 }
 
 async function onSelect(id) {
+  const seq = ++selectSeq
+  pendingFit = false
   track = []
-  if (polyline) {
-    polyline.setPath([])
+  if (polyline && map) {
+    map.removeOverLay(polyline)
+    polyline = null
   }
+  if (!id) return
   const d = devices.value.find((x) => x.deviceId === id)
   if (d) {
     state.battery = d.battery
@@ -118,21 +129,37 @@ async function onSelect(id) {
     online.value = d.status === 'ONLINE'
     renderGauge()
   }
-  // 历史轨迹
-  const res = await stateHistory(id, 200)
+  // 历史轨迹；快速切车时旧请求晚到不能覆盖当前设备
+  let res
+  try {
+    res = await stateHistory(id, 200)
+  } catch (_) {
+    return
+  }
+  if (seq !== selectSeq) return
   const rows = (res.data || []).reverse()
   track = rows.filter((r) => r.lat != null && r.lon != null).map((r) => [r.lon, r.lat])
-  drawTrack()
+  drawTrack(true)
 }
 
-function drawTrack() {
-  if (!map || !AMapRef || !track.length) return
-  if (!polyline) {
-    polyline = new AMapRef.Polyline({ path: track, strokeColor: '#76b900', strokeWeight: 4, map })
+function drawTrack(fit = false) {
+  if (!map || !TRef || !track.length) return
+  const lnglats = track.map((point) => new TRef.LngLat(point[0], point[1]))
+  let created = false
+  if (polyline && typeof polyline.setLngLats === 'function') {
+    polyline.setLngLats(lnglats)
   } else {
-    polyline.setPath(track)
+    if (polyline) map.removeOverLay(polyline)
+    polyline = new TRef.Polyline(lnglats, { color: '#76b900', weight: 4, opacity: 0.9 })
+    map.addOverLay(polyline)
+    created = true
   }
-  map.setFitView([polyline])
+  if (fit || created) pendingFit = true
+  // 单点无法形成有效视野，等第二个点到达后再适配，避免异常放大
+  if (pendingFit && lnglats.length >= 2) {
+    map.setViewport(lnglats)
+    pendingFit = false
+  }
 }
 
 function onEvent(ev) {
@@ -150,6 +177,7 @@ function onEvent(ev) {
     renderGauge()
     if (ev.data.lat != null && ev.data.lon != null) {
       track.push([ev.data.lon, ev.data.lat])
+      if (track.length > MAX_TRACK_POINTS) track.shift()
       drawTrack()
     }
   } else if (ev.kind === 'status') {
@@ -170,7 +198,10 @@ onMounted(init)
 onBeforeUnmount(() => {
   if (wsConn) wsConn.close()
   if (gauge) gauge.dispose()
-  if (map) map.destroy()
+  if (map) {
+    if (map.destroy) map.destroy()
+    else map.clearOverLays()
+  }
 })
 </script>
 

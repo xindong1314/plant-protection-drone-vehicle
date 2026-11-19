@@ -123,10 +123,4 @@ public class InspectionController extends BaseController {
     public AjaxResult getDetectionsByImage(@PathVariable Long imageId) {
         return AjaxResult.success(service.getDetectionsByImage(imageId));
     }
-
-    @PreAuthorize("@ss.hasPermi('ppdv:inspection:query')")
-    @GetMapping("/detection/area/{areaId}")
-    public AjaxResult getDetectionsByArea(@PathVariable Long areaId) {
-        return AjaxResult.success(service.getDetectionsByArea(areaId));
-    }
 }

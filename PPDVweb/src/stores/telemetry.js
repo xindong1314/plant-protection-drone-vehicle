@@ -112,6 +112,13 @@ export const useTelemetryStore = defineStore('telemetry', {
           summary = `进入区域 ${data.zoneCode ?? '?'}`
           break
 
+        case 'tele/track':
+          dev.lastSeenTs = ts
+          dev.status = 'ONLINE'
+          summary = `跟踪：${data.episodeCount ?? 0} 次出现`
+          if (data.status === 'ENDED') summary += '（会话结束）'
+          break
+
         case 'event/alarm':
           this.alarms.unshift({ deviceId, code: data.code, level: data.level, msg: data.msg, ts })
           summary = `⚠️ ${data.code} ${data.msg}`
