@@ -1,0 +1,42 @@
+# ppdv_comm 通信上报节点参数模板。
+# 凭据注入方式（二选一，env 优先）：ROS2 参数 device_secret / 环境变量
+# PPDV_DEVICE_SECRET；device_id 同理可用 PPDV_DEVICE_ID 覆盖。
+# secret 为空时节点以非零退出码拒绝启动——绝不把真实密钥写进本文件提交。
+/**:
+  ros__parameters:
+    # ---- MQTT 连接（协议 §2）----
+    broker_host: "localhost"
+    broker_port: 1883
+    broker_tls: false
+    keepalive: 30
+    # ---- 设备（一机一密）----
+    device_id: "PPDV-0001"          # env PPDV_DEVICE_ID 优先
+    device_secret: ""               # env PPDV_DEVICE_SECRET 优先；留空=拒绝启动
+    fw: "1.3.0"
+    # ---- 上行 ----
+    tele_rate_hz: 1.0               # 状态遥测频率（0.1~10，config/set 可动态修改）
+    log_messages: true              # 报文级 TX/RX 日志开关（INFO 级，前缀 [trace]）
+    log_level: "info"               # 节点日志级别（debug/info/warn/error）
+    # ---- 数据源：sim=小车模拟器 REST | ros=真车 ROS2 话题（非法值拒绝启动）----
+    source: "sim"
+    sim_base_url: "http://127.0.0.1:8090"   # 模拟器地址（source=sim 时生效）
+    sim_poll_hz: 2.0                # 模拟器状态轮询上限（1~5；实际=遥测轮内轮询，见 README）
+    # ---- 下行 ----
+    stale_cmd_max_age_s: 300        # START/RESUME/RTL 超过此时效（秒）拒绝并回 code=2；负值按 0 处理
+    # ---- 断网缓存 ----
+    cache_dir: "cache"              # 断网缓存目录（{cache_dir}/{device_id}.jsonl）
+    # ---- 真车 ROS2 数据源话题名（source:=ros 时生效，假定见 README）----
+    ros_topic_state: "/ppdv/vehicle/state"
+    ros_topic_work: "/ppdv/vehicle/work"
+    ros_topic_zone: "/ppdv/vehicle/zone"
+    ros_topic_alarm: "/ppdv/vehicle/alarm"
+    ros_topic_progress: "/ppdv/vehicle/progress"
+    # ---- 跟踪上行 tele/track（协议 §5.6；默认关闭，与 source 无关）----
+    track_enabled: false            # 总开关；false 时不订阅事件话题、不聚合、不发报文
+    ros_topic_track_events: "/ppdv/perception/track_events"   # 感知跟踪事件（std_msgs/String JSON）
+    track_window_s: 2.0             # 聚合窗口长度（1.0~5.0；协议要求 1~5s）
+    track_lost_timeout_ms: 2000     # 无新样本判定一次出现结束（500~10000ms）
+    track_session_idle_s: 120       # 无合法 detection 自动结束会话（0~3600；0=禁用）
+    track_trajectory_sample_ms: 500 # 轨迹采样间隔（50~5000ms）
+    track_max_trajectory_points: 20 # 单条轨迹点数上限（2~20，对齐云端默认 20）
+    track_max_tracks_per_message: 50 # 单报文 tracks 上限（1~50，对齐云端默认 50）

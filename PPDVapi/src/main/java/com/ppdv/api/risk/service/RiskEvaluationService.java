@@ -8,6 +8,7 @@ import com.ppdv.api.inspection.domain.DetectionResult;
 import com.ppdv.api.inspection.repository.DetectionResultRepository;
 import com.ppdv.api.task.repository.SprayTaskRepository;
 import com.ppdv.api.telemetry.TelemetryTsService;
+import com.ppdv.api.track.service.TrackRiskAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -29,6 +31,7 @@ public class RiskEvaluationService {
     private final SprayTaskRepository sprayTaskRepo;
     private final DeviceRepository deviceRepo;
     private final ObjectProvider<TelemetryTsService> tsProvider;
+    private final ObjectProvider<TrackRiskAdapter> trackAdapterProvider;
 
     /** 检测类别中文名 → config key 后缀 */
     private static final Map<String, String> CATEGORY_KEY = Map.of(
@@ -44,13 +47,15 @@ public class RiskEvaluationService {
                                  DetectionResultRepository detectionRepo,
                                  SprayTaskRepository sprayTaskRepo,
                                  DeviceRepository deviceRepo,
-                                 ObjectProvider<TelemetryTsService> tsProvider) {
+                                 ObjectProvider<TelemetryTsService> tsProvider,
+                                 ObjectProvider<TrackRiskAdapter> trackAdapterProvider) {
         this.configService = configService;
         this.areaService = areaService;
         this.detectionRepo = detectionRepo;
         this.sprayTaskRepo = sprayTaskRepo;
         this.deviceRepo = deviceRepo;
         this.tsProvider = tsProvider;
+        this.trackAdapterProvider = trackAdapterProvider;
     }
 
     /** 对单个区域执行风险评估，返回 {score, status}。 */
@@ -80,10 +85,21 @@ public class RiskEvaluationService {
         log.info("区域 {} ({}): 检测={} 环境={} 历史={} 总分={} 状态={}",
                 area.getAreaCode(), area.getAreaName(), detectionScore, envScore, historyScore, total, status);
 
-        return Map.of("score", total, "status", status,
-                "detectionScore", detectionScore,
-                "envScore", envScore,
-                "historyScore", historyScore);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("score", total);
+        result.put("status", status);
+        result.put("detectionScore", detectionScore);
+        result.put("envScore", envScore);
+        result.put("historyScore", historyScore);
+        // P1 影子模式：默认不追加跟踪分；shadow-in-evaluate 打开时追加，总分不变（P2 才正式接入）。
+        TrackRiskAdapter trackAdapter = trackAdapterProvider.getIfAvailable();
+        if (trackAdapter != null && trackAdapter.shadowInEvaluate()) {
+            TrackRiskAdapter.ShadowScore shadow = trackAdapter.computeShadow(areaId);
+            result.put("trackScore", shadow.trackScore());
+            result.put("trackContributions", shadow.contributions());
+            result.put("trackEvidenceStatus", shadow.hasEvidence());
+        }
+        return result;
     }
 
     // ---- 检测分 ----

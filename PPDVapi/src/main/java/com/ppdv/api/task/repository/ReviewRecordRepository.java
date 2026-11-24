@@ -9,10 +9,6 @@ import java.util.Collection;
 
 public interface ReviewRecordRepository extends JpaRepository<ReviewRecord, Long>, JpaSpecificationExecutor<ReviewRecord> {
 
-    List<ReviewRecord> findBySprayTaskIdOrderByReviewTimeDesc(Long sprayTaskId);
-
-    List<ReviewRecord> findByAreaIdOrderByReviewTimeDesc(Long areaId);
-
     List<ReviewRecord> findBySprayTaskIdInOrderByReviewTimeDescIdDesc(Collection<Long> sprayTaskIds);
 
     boolean existsByAreaId(Long areaId);

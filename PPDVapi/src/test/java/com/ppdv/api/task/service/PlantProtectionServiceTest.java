@@ -59,6 +59,7 @@ class PlantProtectionServiceTest {
         SprayTask task = task("IN_PROGRESS");
         when(sprayRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(task));
         when(sprayRepository.save(task)).thenReturn(task);
+        when(areaService.existsById(9L)).thenReturn(true);
 
         service.updateSprayTaskStatus(1L, "COMPLETED");
         service.updateSprayTaskStatus(1L, "COMPLETED");
@@ -67,6 +68,22 @@ class PlantProtectionServiceTest {
         verify(reviewRepository, times(1)).save(any(ReviewRecord.class));
         verify(archiveService, times(1)).touchSpray(9L);
         verify(areaService, times(1)).updateRiskStatus(9L, "SPRAYED_PENDING_REVIEW");
+    }
+
+    @Test
+    void completedSprayTaskOnDeletedAreaStillClosesWithoutAreaLinkage() {
+        // v1.1 评审 S5：区域已被 V11 删除时，历史点喷任务照常收尾，仅跳过区域联动。
+        SprayTask task = task("IN_PROGRESS");
+        when(sprayRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(task));
+        when(sprayRepository.save(task)).thenReturn(task);
+        when(areaService.existsById(9L)).thenReturn(false);
+
+        service.updateSprayTaskStatus(1L, "COMPLETED");
+
+        assertEquals("COMPLETED", task.getStatus());
+        verify(reviewRepository, times(1)).save(any(ReviewRecord.class));
+        verify(archiveService, never()).touchSpray(9L);
+        verify(areaService, never()).updateRiskStatus(9L, "SPRAYED_PENDING_REVIEW");
     }
 
     @Test
@@ -204,6 +221,7 @@ class PlantProtectionServiceTest {
         when(sprayRepository.findById(1L)).thenReturn(Optional.of(task));
         when(imageRepository.findById(3L)).thenReturn(Optional.of(image));
         when(reviewRepository.save(review)).thenReturn(review);
+        when(areaService.existsById(9L)).thenReturn(true);
 
         ReviewRecord saved = service.createReview(review);
 

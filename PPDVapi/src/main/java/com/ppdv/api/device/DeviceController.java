@@ -4,6 +4,7 @@ import com.ppdv.api.common.AjaxResult;
 import com.ppdv.api.common.page.TableDataInfo;
 import com.ppdv.api.common.web.BaseController;
 import com.ppdv.api.device.dto.CreateDeviceRequest;
+import com.ppdv.api.greenhouse.service.RouteRecordingService;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -23,9 +24,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class DeviceController extends BaseController {
 
     private final DeviceService service;
+    private final RouteRecordingService routeRecordingService;
 
-    public DeviceController(DeviceService service) {
+    public DeviceController(DeviceService service, RouteRecordingService routeRecordingService) {
         this.service = service;
+        this.routeRecordingService = routeRecordingService;
     }
 
     @PreAuthorize("@ss.hasPermi('ppdv:device:list')")
@@ -49,6 +52,8 @@ public class DeviceController extends BaseController {
     @PreAuthorize("@ss.hasPermi('ppdv:device:remove')")
     @DeleteMapping("/{ids}")
     public AjaxResult remove(@PathVariable Long[] ids) {
+        // v1.1 评审 S4：删除设备前联动取消其路线录制会话，避免删除后设备被会话永久占用。
+        routeRecordingService.cancelForDevices(service.findDeviceIdsByIds(ids));
         service.deleteByIds(ids);
         return AjaxResult.success();
     }

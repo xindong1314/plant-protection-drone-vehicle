@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>ppdv_comm</name>
+  <version>1.3.0</version>
+  <description>PPDV 车载端通信上报节点：经 MQTT（ppdv/v1/{deviceId}/...）与云平台 PPDVapi
+    交换遥测、跟踪观测与指令，含断网缓存补传、下行去重与 cmd/ack 回执。传输层协议见仓库根
+    docs/protocol.md（v0.4）。</description>
+  <maintainer email="ppdv@example.com">PPDV</maintainer>
+  <license>MIT</license>
+
+  <depend>rclpy</depend>
+  <depend>std_msgs</depend>
+  <depend>std_srvs</depend>
+  <exec_depend>ros2launch</exec_depend>
+
+  <!-- paho-mqtt>=2.1,<3 由 README 用 pip 安装（Humble 的 apt python3-paho-mqtt 是
+       1.x，不兼容 paho 2.x 的 CallbackAPIVersion.VERSION2 回调签名）——
+       勿用 rosdep 安装 paho；setup.py 的 install_requires 供 colcon python 打包路径。 -->
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

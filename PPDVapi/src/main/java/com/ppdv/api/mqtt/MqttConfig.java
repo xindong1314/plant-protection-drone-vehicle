@@ -2,7 +2,12 @@ package com.ppdv.api.mqtt;
 
 import com.ppdv.api.protocol.Topics;
 import com.ppdv.api.telemetry.TelemetryIngestService;
+import com.ppdv.api.track.TrackProperties;
+import com.ppdv.api.track.service.TrackIngestService;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -19,10 +24,15 @@ import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
 import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Configuration
 @EnableConfigurationProperties(MqttProperties.class)
 @ConditionalOnProperty(prefix = "ppdv.mqtt", name = "enabled", havingValue = "true")
 public class MqttConfig {
+
+    private static final Logger log = LoggerFactory.getLogger(MqttConfig.class);
 
     private final MqttProperties props;
 
@@ -54,11 +64,17 @@ public class MqttConfig {
     }
 
     @Bean
-    public MqttPahoMessageDrivenChannelAdapter mqttInbound(MqttPahoClientFactory factory) {
-        MqttPahoMessageDrivenChannelAdapter adapter = new MqttPahoMessageDrivenChannelAdapter(
-                props.getClientIdPrefix() + "-in", factory,
+    public MqttPahoMessageDrivenChannelAdapter mqttInbound(MqttPahoClientFactory factory,
+                                                           TrackProperties trackProperties) {
+        List<String> topics = new ArrayList<>(List.of(
                 Topics.SUB_STATUS, Topics.SUB_STATE, Topics.SUB_WORK,
-                Topics.SUB_ENV, Topics.SUB_ZONE, Topics.SUB_ALARM, Topics.SUB_PROGRESS, Topics.SUB_ACK);
+                Topics.SUB_ENV, Topics.SUB_ZONE, Topics.SUB_ALARM, Topics.SUB_PROGRESS, Topics.SUB_ACK));
+        // ppdv.track.enabled=false 时不订阅 tele/track（关闭开关即停止消费）。
+        if (trackProperties.isEnabled()) {
+            topics.add(Topics.SUB_TRACK);
+        }
+        MqttPahoMessageDrivenChannelAdapter adapter = new MqttPahoMessageDrivenChannelAdapter(
+                props.getClientIdPrefix() + "-in", factory, topics.toArray(String[]::new));
         adapter.setCompletionTimeout(5000);
         adapter.setConverter(new DefaultPahoMessageConverter());
         adapter.setQos(1);
@@ -68,10 +84,21 @@ public class MqttConfig {
 
     @Bean
     @ServiceActivator(inputChannel = "mqttInboundChannel")
-    public MessageHandler mqttInboundHandler(TelemetryIngestService ingest) {
+    public MessageHandler mqttInboundHandler(TelemetryIngestService ingest,
+                                             ObjectProvider<TrackIngestService> trackIngest) {
         return message -> {
             String topic = (String) message.getHeaders().get(MqttHeaders.RECEIVED_TOPIC);
-            ingest.onMessage(topic, message.getPayload().toString());
+            String payload = message.getPayload().toString();
+            if ("tele/track".equals(Topics.kindOf(topic))) {
+                TrackIngestService handler = trackIngest.getIfAvailable();
+                if (handler != null) {
+                    handler.onMessage(topic, payload);
+                } else {
+                    log.debug("跟踪功能未启用，忽略 tele/track: {}", topic);
+                }
+                return;
+            }
+            ingest.onMessage(topic, payload);
         };
     }
 

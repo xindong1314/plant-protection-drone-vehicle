@@ -9,9 +9,6 @@
                  </div>
                </template>
                <div>
-                  <div class="text-center">
-                     <userAvatar />
-                  </div>
                   <ul class="list-group list-group-striped">
                      <li class="list-group-item">
                         <svg-icon icon-class="user" />用户名称
@@ -63,7 +60,6 @@
 </template>
 
 <script setup name="Profile">
-import userAvatar from "./userAvatar"
 import userInfo from "./userInfo"
 import resetPwd from "./resetPwd"
 import { getUserProfile } from "@/api/system/user"

@@ -38,15 +38,6 @@
          </el-col>
          <el-col :span="1.5">
             <el-button
-               type="warning"
-               plain
-               icon="Check"
-               @click="handleSaveSort"
-               v-hasPermi="['system:menu:edit']"
-            >保存排序</el-button>
-         </el-col>
-         <el-col :span="1.5">
-            <el-button 
                type="info"
                plain
                icon="Sort"
@@ -79,11 +70,7 @@
                <el-tag v-else-if="scope.row.menuType === 'F'" type="warning" size="small">按钮</el-tag>
             </template>
          </el-table-column>
-         <el-table-column prop="orderNum" label="排序" width="200">
-            <template #default="scope">
-               <el-input-number v-model="scope.row.orderNum" controls-position="right" :min="0" style="width: 88px" />
-            </template>
-         </el-table-column>
+         <el-table-column prop="orderNum" label="排序" width="100"></el-table-column>
          <el-table-column prop="perms" label="权限标识" :show-overflow-tooltip="true" />
          <el-table-column prop="component" label="组件路径" :show-overflow-tooltip="true" />
          <el-table-column prop="status" label="状态" width="80">
@@ -306,7 +293,7 @@
 </template>
 
 <script setup name="Menu">
-import { addMenu, delMenu, getMenu, listMenu, updateMenu, updateMenuSort } from "@/api/system/menu"
+import { addMenu, delMenu, getMenu, listMenu, updateMenu } from "@/api/system/menu"
 import SvgIcon from "@/components/SvgIcon"
 import IconSelect from "@/components/IconSelect"
 
@@ -322,7 +309,6 @@ const menuOptions = ref([])
 const isExpandAll = ref(false)
 const refreshTable = ref(true)
 const iconSelectRef = ref(null)
-const originalOrders = ref({})
 
 const data = reactive({
   form: {},
@@ -344,7 +330,6 @@ function getList() {
   loading.value = true
   listMenu(queryParams.value).then(response => {
     menuList.value = proxy.handleTree(response.data, "menuId")
-    recordOriginalOrders(menuList.value)
     loading.value = false
   })
 }
@@ -454,43 +439,6 @@ function submitForm() {
         })
       }
     }
-  })
-}
-
-
-/** 递归记录原始排序 */
-function recordOriginalOrders(list) {
-  list.forEach(item => {
-    originalOrders.value[item.menuId] = item.orderNum
-    if (item.children && item.children.length) {
-      recordOriginalOrders(item.children)
-    }
-  })
-}
-
-/** 保存排序 */
-function handleSaveSort() {
-  const changedMenuIds = []
-  const changedOrderNums = []
-  const collectChanged = (list) => {
-    list.forEach(item => {
-      if (String(originalOrders.value[item.menuId]) !== String(item.orderNum)) {
-        changedMenuIds.push(item.menuId)
-        changedOrderNums.push(item.orderNum)
-      }
-      if (item.children && item.children.length) {
-        collectChanged(item.children)
-      }
-    })
-  }
-  collectChanged(menuList.value)
-  if (changedMenuIds.length === 0) {
-   proxy.$modal.msgWarning("未检测到排序修改")
-    return
-  }
-  updateMenuSort({ menuIds: changedMenuIds.join(","), orderNums: changedOrderNums.join(",") }).then(() => {
-   proxy.$modal.msgSuccess("排序保存成功")
-    recordOriginalOrders(menuList.value)
   })
 }
 

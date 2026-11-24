@@ -9,14 +9,6 @@ export function listDevice(query) {
   })
 }
 
-// 查询设备详情
-export function getDevice(deviceId) {
-  return request({
-    url: '/ppdv/device/' + deviceId,
-    method: 'get'
-  })
-}
-
 // 登记设备
 export function addDevice(data) {
   return request({

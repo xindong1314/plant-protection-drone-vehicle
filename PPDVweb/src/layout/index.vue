@@ -34,7 +34,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Aim, CircleCheck, Collection, DataLine, MapLocation, Monitor, Picture, PieChart, SetUp, Warning } from '@element-plus/icons-vue'
+import { Aim, CircleCheck, Collection, DataLine, MapLocation, Monitor, Picture, PieChart, Position, SetUp, Warning } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
 
 const route = useRoute()
@@ -47,6 +47,7 @@ const navItems = [
   { path: '/area', title: '区域管理', subtitle: '地块边界与风险', icon: MapLocation, permissions: ['ppdv:area:list'] },
   { path: '/archive', title: '区域档案', subtitle: '区域履历与风险', icon: Collection, permissions: ['ppdv:archive:query'] },
   { path: '/inspection', title: '巡检管理', subtitle: '图片与识别结果', icon: Picture, permissions: ['ppdv:inspection:query'] },
+  { path: '/track', title: '跟踪记录', subtitle: '目标轨迹与状态', icon: Position, permissions: ['ppdv:track:query'] },
   { path: '/spray', title: '点喷任务', subtitle: '精准喷洒调度', icon: Aim, permissions: ['ppdv:spray:query'] },
   { path: '/review', title: '喷后复查', subtitle: '效果复核与闭环', icon: CircleCheck, permissions: ['ppdv:spray:query'] },
   { path: '/risk', title: '风险规则', subtitle: '评分规则与计算', icon: Warning, permissions: ['ppdv:risk:config:query'] },

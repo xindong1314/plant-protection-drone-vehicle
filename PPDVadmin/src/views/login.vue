@@ -40,7 +40,6 @@
         </el-form-item>
         <div class="form-options">
           <el-checkbox v-model="loginForm.rememberMe">记住密码</el-checkbox>
-          <router-link v-if="register" class="link-type" to="/register">立即注册</router-link>
         </div>
         <el-button :loading="loading" size="large" type="primary" class="submit" @click.prevent="handleLogin">
           <span v-if="!loading">进入管理控制台</span><span v-else>正在验证...</span>
@@ -73,7 +72,6 @@ const loginRules = {
 const codeUrl = ref("")
 const loading = ref(false)
 const captchaEnabled = ref(true)
-const register = ref(false)
 const redirect = ref(undefined)
 
 watch(route, (newRoute) => {
