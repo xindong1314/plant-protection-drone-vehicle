@@ -385,4 +385,19 @@ class TrackIngestServiceTest {
                 + ",\"firstSeenTs\":" + (lastSeenTs - 1000) + ",\"lastSeenTs\":" + lastSeenTs
                 + ",\"frameCount\":3,\"boxX\":1,\"boxY\":2,\"boxW\":3,\"boxH\":4,\"trackState\":\"ACTIVE\"}";
     }
+
+    @Test
+    void unresolvedAreaDeletesDedupeKeySoRetryWithSameMsgIdCanSucceed() {
+        ingest.onMessage(topic(), message("m-3", "D1", "S1", null, track("T1", "EP-T1", "leaf_late_blight", 0.8, 2000)));
+
+        // 区域暂不可解析属于可恢复条件：回删去重键，否则同 msgId 的重发会被当重复消息永久吞掉。
+        verify(redisCache).delete("track:msg:D1:m-3");
+    }
+
+    @Test
+    void deterministicallyInvalidMessageKeepsDedupeKey() {
+        ingest.onMessage(topic(), message("m-4", "OTHER", "S1", 12L, track("T1", "EP-T1", "leaf_late_blight", 0.8, 2000)));
+
+        verify(redisCache, never()).delete(anyString());
+    }
 }

@@ -110,7 +110,10 @@ public class TrackIngestService {
             return;
         }
         try {
-            process(deviceId, root);
+            if (!process(deviceId, root)) {
+                // 因区域暂不可解析而丢弃：该条件可能随后恢复，回删去重键让车端用同一 msgId 重发时仍能入库。
+                deleteDedupeQuietly(dedupeKey);
+            }
         } catch (Exception e) {
             // 去重键已写入但落库/处理失败：回删键让 QoS1 补传可重放（落库幂等），避免消息被永久吞掉。
             deleteDedupeQuietly(dedupeKey);
@@ -118,25 +121,28 @@ public class TrackIngestService {
         }
     }
 
-    private void process(String deviceId, JsonNode root) {
+    /**
+     * @return false 表示因区域暂不可解析而丢弃（可重试，调用方需回删去重键）；true 表示已处理或确定性丢弃（重发也不会成功）。
+     */
+    private boolean process(String deviceId, JsonNode root) {
         JsonNode data = root.path("data");
         if (!data.isObject()) {
             log.warn("[{}] 跟踪消息缺少 data 对象，丢弃", deviceId);
-            return;
+            return true;
         }
         String sessionKey = data.path("trackSessionId").asText("").trim();
         if (sessionKey.isEmpty() || sessionKey.length() > 64) {
             log.warn("[{}] trackSessionId 缺失或超过 64 字符，丢弃", deviceId);
-            return;
+            return true;
         }
         JsonNode tracksNode = data.path("tracks");
         if (!tracksNode.isArray()) {
             log.warn("[{}] tracks 缺失或非数组，丢弃", deviceId);
-            return;
+            return true;
         }
         if (tracksNode.size() > props.getMaxTracks()) {
             log.warn("[{}] TRACK_TOO_MANY_TRACKS {} 条超过上限 {}，丢弃", deviceId, tracksNode.size(), props.getMaxTracks());
-            return;
+            return true;
         }
         List<TrackObservation> observations = parseTracks(deviceId, tracksNode);
         long ts = root.path("ts").asLong(System.currentTimeMillis());
@@ -145,24 +151,24 @@ public class TrackIngestService {
         boolean sessionEnd = data.path("sessionEnd").asBoolean(false);
         if (!tracksNode.isEmpty() && observations.isEmpty() && !sessionEnd) {
             log.warn("[{}] 跟踪消息无有效 track（类别拒识/字段非法/缺 episodeId），丢弃", deviceId);
-            return;
+            return true;
         }
 
         Long areaId = resolveArea(deviceId, data);
         if (areaId == null) {
             // 区域不可解析但携带 sessionEnd=true 时仍要结束既有会话，避免结束信号只能等空闲清扫兜底。
             if (!sessionEnd) {
-                return;
+                return false;
             }
             TrackStoreResult ended = storeService.endSession(deviceId, ts, sessionKey);
             if (ended == null) {
                 log.warn("[{}] sessionEnd=true 但区域不可解析且无既有会话，丢弃", deviceId);
-                return;
+                return true;
             }
             log.info("[{}] 跟踪消息 session={} sessionEnd=true（区域不可解析），结束既有会话", deviceId, sessionKey);
             broadcaster.broadcast(deviceId, ts, ended);
             riskAdapter.schedule(ended.areaId(), true);
-            return;
+            return true;
         }
 
         TrackStoreResult result = storeService.apply(deviceId, ts, areaId, sessionKey, observations, sessionEnd);
@@ -170,6 +176,7 @@ public class TrackIngestService {
                 result.episodeCount(), result.status(), sessionEnd);
         broadcaster.broadcast(deviceId, ts, result);
         riskAdapter.schedule(areaId, result.ended());
+        return true;
     }
 
     private boolean allowedDevice(String deviceId) {

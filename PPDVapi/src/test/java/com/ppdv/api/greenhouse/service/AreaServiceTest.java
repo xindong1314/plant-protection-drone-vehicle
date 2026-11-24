@@ -409,4 +409,68 @@ class AreaServiceTest {
         area.setCreateBy("tester");
         return area;
     }
+
+    @Test
+    void updateWithRedrawnBoundaryInvalidatesRecordedRoute() {
+        GreenhouseArea db = area("C1");
+        db.setId(7L);
+        db.setBoundaryJson("[[116.1,39.1],[116.2,39.1],[116.2,39.2]]");
+        db.setRouteJson("[[116.15,39.15],[116.16,39.16]]");
+        db.setRoutePointCount(2);
+        db.setRouteRecordedAt(LocalDateTime.of(2026, 1, 1, 8, 0));
+        GreenhouseArea request = area("C1");
+        request.setId(7L);
+        request.setBoundaryJson("[[116.2,39.1],[116.3,39.1],[116.3,39.2]]");
+        when(repository.findByIdForUpdate(7L)).thenReturn(Optional.of(db));
+        when(repository.save(db)).thenReturn(db);
+
+        GreenhouseArea saved = service.update(request);
+
+        // 边界重画后旧路线与新几何不再匹配，必须作废，避免规划页返回落在新边界外的路线。
+        assertNull(saved.getRouteJson());
+        assertNull(saved.getRoutePointCount());
+        assertNull(saved.getRouteRecordedAt());
+    }
+
+    @Test
+    void updateClearingBoundaryInvalidatesRecordedRoute() {
+        GreenhouseArea db = area("C1");
+        db.setId(7L);
+        db.setBoundaryJson("[[116.1,39.1],[116.2,39.1],[116.2,39.2]]");
+        db.setRouteJson("[[116.15,39.15],[116.16,39.16]]");
+        db.setRoutePointCount(2);
+        db.setRouteRecordedAt(LocalDateTime.of(2026, 1, 1, 8, 0));
+        GreenhouseArea request = area("C1");
+        request.setId(7L);
+        request.setBoundaryJson("");
+        when(repository.findByIdForUpdate(7L)).thenReturn(Optional.of(db));
+        when(repository.save(db)).thenReturn(db);
+
+        GreenhouseArea saved = service.update(request);
+
+        assertNull(saved.getRouteJson());
+        assertNull(saved.getRoutePointCount());
+        assertNull(saved.getRouteRecordedAt());
+    }
+
+    @Test
+    void updateResubmittingSameBoundaryKeepsRecordedRoute() {
+        String boundary = "[[116.1,39.1],[116.2,39.1],[116.2,39.2]]";
+        GreenhouseArea db = area("C1");
+        db.setId(7L);
+        db.setBoundaryJson(boundary);
+        db.setRouteJson("[[116.15,39.15],[116.16,39.16]]");
+        db.setRoutePointCount(2);
+        GreenhouseArea request = area("C1");
+        request.setId(7L);
+        request.setBoundaryJson(boundary);
+        when(repository.findByIdForUpdate(7L)).thenReturn(Optional.of(db));
+        when(repository.save(db)).thenReturn(db);
+
+        GreenhouseArea saved = service.update(request);
+
+        // 原样回传相同边界（管理端普通编辑）不算重画，路线保留。
+        assertEquals("[[116.15,39.15],[116.16,39.16]]", saved.getRouteJson());
+        assertEquals(2, saved.getRoutePointCount());
+    }
 }

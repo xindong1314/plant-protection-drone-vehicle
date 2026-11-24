@@ -108,10 +108,27 @@ public class TelemetryIngestService {
         }
     }
 
-    /** 仅在字段存在且为数值节点时取 double，否则返回 null。 */
+    /**
+     * 取经纬度等数值字段：数值节点直接取值；数值字符串（如 "31.2"）解析后取值（兼容旧 asDouble() 行为）；
+     * 缺失、非数值字符串、NaN/Infinity 一律返回 null（v1.1 评审 M4：不得回落 (0,0)）。
+     */
     private static Double numberOf(JsonNode data, String field) {
         JsonNode node = data.get(field);
-        return node != null && node.isNumber() ? node.asDouble() : null;
+        if (node == null) {
+            return null;
+        }
+        if (node.isNumber()) {
+            return node.asDouble();
+        }
+        if (node.isTextual()) {
+            try {
+                double value = Double.parseDouble(node.asText().trim());
+                return Double.isFinite(value) ? value : null;
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+        return null;
     }
 
     private void handleWork(String deviceId, long ts, JsonNode data) {

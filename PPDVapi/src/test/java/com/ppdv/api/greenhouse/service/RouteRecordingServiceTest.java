@@ -392,4 +392,36 @@ class RouteRecordingServiceTest {
         device.setStatus(status);
         return device;
     }
+
+    @Test
+    void stopKeepsSessionWhenSaveFailsWithTransientDatabaseError() {
+        when(areaService.get(9L)).thenReturn(area(9L, "A1"));
+        when(deviceService.get("car-1")).thenReturn(device("car-1", DeviceStatus.ONLINE));
+        service.start(9L, "car-1");
+        service.append("car-1", 39.0, 116.0, T0);
+        service.append("car-1", 39.1, 116.1, T0 + 1);
+        doThrow(new org.springframework.dao.QueryTimeoutException("lock wait timeout"))
+                .doNothing()
+                .when(areaService).saveRecordedRoute(anyLong(), anyString());
+
+        assertThrows(org.springframework.dao.QueryTimeoutException.class, () -> service.stop(9L));
+        // 瞬时数据库故障不丢已录轨迹：会话仍在，重试 stop 成功。
+        assertEquals(1, service.status().size());
+        assertEquals(2, service.stop(9L));
+        assertTrue(service.status().isEmpty());
+    }
+
+    @Test
+    void futureTimestampPointDoesNotFreezeRecording() {
+        when(areaService.get(9L)).thenReturn(area(9L, "A1"));
+        when(deviceService.get("car-1")).thenReturn(device("car-1", DeviceStatus.ONLINE));
+        service.start(9L, "car-1");
+        service.append("car-1", 39.0, 116.0, T0);
+        // 一个时间戳异常超前（GPS 时间跳变）的点被接受……
+        service.append("car-1", 39.1, 116.1, T0 + 24L * 60 * 60 * 1000);
+        // ……之后恢复正常的时间戳不应被当作乱序丢弃。
+        service.append("car-1", 39.2, 116.2, T0 + 2000);
+
+        assertEquals(3, service.stop(9L));
+    }
 }

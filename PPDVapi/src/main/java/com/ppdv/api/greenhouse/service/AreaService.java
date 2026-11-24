@@ -189,6 +189,13 @@ public class AreaService {
         if (area.getArucoId() != null) {
             db.setArucoId(area.getArucoId());
         }
+        // 已录制的路线与边界几何绑定：边界被清除或重画后旧路线不再有效，必须一并作废，
+        // 否则规划页会继续返回落在新边界之外的路线，且 route_point_count 仍显示"已录制"。
+        if (clearBoundary || boundaryReplaced) {
+            db.setRouteJson(null);
+            db.setRoutePointCount(null);
+            db.setRouteRecordedAt(null);
+        }
         if (clearBoundary) {
             db.setBoundaryJson(null);
             // 边界清除后不再有旧坐标系坏数据，坐标系可归位 CGCS2000。

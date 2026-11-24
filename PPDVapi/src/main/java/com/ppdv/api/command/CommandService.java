@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.ppdv.api.device.DeviceService;
+import com.ppdv.api.greenhouse.service.RouteRecordingService;
 import com.ppdv.api.mqtt.MqttPublisher;
 import com.ppdv.api.protocol.Envelope;
 import com.ppdv.api.protocol.Topics;
@@ -18,13 +19,27 @@ public class CommandService {
     private final ObjectProvider<MqttPublisher> publisherProvider;
     private final DeviceService deviceService;
     private final ObjectMapper objectMapper;
+    private final RouteRecordingService routeRecordingService;
 
     public CommandService(ObjectProvider<MqttPublisher> publisherProvider,
                           DeviceService deviceService,
-                          ObjectMapper objectMapper) {
+                          ObjectMapper objectMapper,
+                          RouteRecordingService routeRecordingService) {
         this.publisherProvider = publisherProvider;
         this.deviceService = deviceService;
         this.objectMapper = objectMapper;
+        this.routeRecordingService = routeRecordingService;
+    }
+
+    /**
+     * v1.1 评审 L4：正在录制路线的设备不允许下发会让车辆动作的作业类指令（任务、点喷），
+     * 否则任务遥测会污染当次录制。守卫放在服务层，覆盖所有入口；
+     * 普通控制指令（sendCommand，如急停/暂停）不受限，安全指令必须始终可达。
+     */
+    private void assertNotRecordingRoute(String deviceId) {
+        if (routeRecordingService.hasActiveSessionForDevice(deviceId)) {
+            throw new IllegalStateException("设备正在录制路线，不能下发任务: " + deviceId);
+        }
     }
 
     /** 下发控制指令，返回本次 msgId（车载端回执时以此为 refId）。 */
@@ -53,6 +68,7 @@ public class CommandService {
     /** 下发点喷指令（start/stop），返回本次 msgId。发布到 spray/req。 */
     public String sendSpray(String deviceId, String action, String areaCode, Integer duration) {
         deviceService.get(deviceId);
+        assertNotRecordingRoute(deviceId);
         MqttPublisher publisher = publisherProvider.getIfAvailable();
         if (publisher == null) {
             throw new IllegalStateException("MQTT 未启用 (ppdv.mqtt.enabled=false)，无法下发点喷指令");
@@ -76,6 +92,7 @@ public class CommandService {
     /** 下发作业任务（航线/地块/参数），返回本次 msgId。发布到 task/assign。 */
     public String sendTask(String deviceId, Map<String, Object> taskData) {
         deviceService.get(deviceId);
+        assertNotRecordingRoute(deviceId);
         MqttPublisher publisher = publisherProvider.getIfAvailable();
         if (publisher == null) {
             throw new IllegalStateException("MQTT 未启用 (ppdv.mqtt.enabled=false)，无法下发任务");

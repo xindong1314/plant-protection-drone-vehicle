@@ -9,6 +9,7 @@ import com.ppdv.api.greenhouse.domain.GreenhouseArea;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -37,6 +38,11 @@ public class RouteRecordingService {
     /** v1.1 评审 S3：坐标统一 7 位小数（与 V10 精度一致），再叠加字节预算兜底。 */
     private static final int COORDINATE_SCALE = 7;
     private static final int ROUTE_BYTES_MARGIN = 1024;
+    /**
+     * 设备时钟允许领先服务器时钟的容忍量。lastFixTs 超出该范围视为异常时间戳（GPS 时间跳变、秒/毫秒混用），
+     * 不再作为补传过滤的基准，否则一个异常的未来 ts 会让之后所有正常点被当作乱序丢弃。
+     */
+    private static final long FUTURE_TS_TOLERANCE_MS = 5 * 60 * 1000L;
 
     private final AreaService areaService;
     private final DeviceService deviceService;
@@ -121,7 +127,9 @@ public class RouteRecordingService {
                 session.lastSeenAt = now;
                 // 补传过滤只比较设备时钟的最近入库点；lastFixTs 为 0（尚无有效点）时不过滤，
                 // 首点无条件接受，设备时钟偏慢不再丢点（评审修复#3）。
-                if (session.lastFixTs != 0 && ts < session.lastFixTs) {
+                // lastFixTs 明显领先服务器时钟时视为异常基准，放弃过滤（下一个正常点会把 lastFixTs 拉回）。
+                if (session.lastFixTs != 0 && ts < session.lastFixTs
+                        && session.lastFixTs <= now + FUTURE_TS_TOLERANCE_MS) {
                     return;
                 }
                 List<double[]> points = session.points;
@@ -179,10 +187,20 @@ public class RouteRecordingService {
                 throw new IllegalArgumentException(
                         "路线有效点数不足，至少需要 " + MIN_ROUTE_POINTS + " 个点，请继续录制或取消录入");
             }
+            // 校验类失败（IllegalArgument/IllegalState）为终态，不留死会话；
+            // 数据库瞬时故障（锁等待超时、连接抖动）则保留会话与已录点，允许重试 stop，
+            // 否则最长 2 小时的轨迹会因一次瞬时失败全部丢失。保留的会话仍受空闲/最长时长超时兜底。
+            boolean keepSession = false;
             try {
                 areaService.saveRecordedRoute(areaId, serialize(points));
+            } catch (DataAccessException e) {
+                keepSession = true;
+                log.warn("路线落库遇到数据库异常，保留录制会话以便重试: areaId={}, err={}", areaId, e.getMessage());
+                throw e;
             } finally {
-                sessions.remove(session.deviceId, session);
+                if (!keepSession) {
+                    sessions.remove(session.deviceId, session);
+                }
             }
             return points.size();
         }
